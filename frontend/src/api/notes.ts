@@ -45,7 +45,11 @@ export function buildTree(folders: NoteFolder[], pages: NotePageItem[]): TreeLev
     const parent = node.folder.parent_id === null ? undefined : nodes.get(node.folder.parent_id)
     ;(parent ?? root).folders.push(node)
   }
+  const seen = new Set<number>()
   for (const page of pages) {
+    // A page can briefly sit in two cached lists after a move; the tree needs unique ids.
+    if (seen.has(page.id)) continue
+    seen.add(page.id)
     const parent = page.folder_id === null ? undefined : nodes.get(page.folder_id)
     ;(parent ?? root).pages.push(page)
   }
