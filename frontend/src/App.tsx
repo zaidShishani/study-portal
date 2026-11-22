@@ -9,6 +9,7 @@ import NotFoundPage from './pages/NotFoundPage'
 import NotesPage from './pages/NotesPage'
 import ProblemPage from './pages/ProblemPage'
 import ReviewPage from './pages/ReviewPage'
+import RoadmapPage from './pages/RoadmapPage'
 import RoadmapsPage from './pages/RoadmapsPage'
 import TodayPage from './pages/TodayPage'
 
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="leetcode/:problemId" element={<ProblemPage />} />
         <Route path="notes" element={<NotesPage />} />
         <Route path="roadmaps" element={<RoadmapsPage />} />
+        <Route path="roadmaps/:roadmapId" element={<RoadmapPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
