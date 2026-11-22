@@ -7,7 +7,7 @@ export const useDecks = () => useQuery({ queryKey: KEY, queryFn: listDecks })
 
 function useDeckMutation<A, R>(mutationFn: (arg: A) => Promise<R>) {
   const queryClient = useQueryClient()
-  return useMutation({ mutationFn, onSuccess: () => queryClient.invalidateQueries({ queryKey: KEY }) })
+  return useMutation({ mutationFn, onSettled: () => queryClient.invalidateQueries({ queryKey: KEY }) })
 }
 
 export const useCreateDeck = () => useDeckMutation(createDeck)

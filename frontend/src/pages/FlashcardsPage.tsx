@@ -28,6 +28,8 @@ export default function FlashcardsPage() {
   // null = closed; { deck: undefined } = create; { deck } = rename.
   const [editing, setEditing] = useState<{ deck?: Deck } | null>(null)
   const [deleting, setDeleting] = useState<Deck | null>(null)
+  // Separate flag keeps the deck title visible during the close animation.
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [message, setMessage] = useState('')
   const [dismissedError, setDismissedError] = useState<Error | null>(null)
   const onError = (err: Error) => setMessage(err.message)
@@ -46,7 +48,7 @@ export default function FlashcardsPage() {
 
   function confirmDelete() {
     if (deleting) deleteDeck.mutate(deleting.id, { onError })
-    setDeleting(null)
+    setDeleteOpen(false)
   }
 
   return (
@@ -67,11 +69,11 @@ export default function FlashcardsPage() {
           <Card key={deck.id} variant="outlined">
             <CardActionArea component={Link} to={`/flashcards/${deck.id}`}>
               <CardContent>
-                <Typography variant="h6" component="h2" noWrap>
+                <Typography variant="h6" component="h2" noWrap title={deck.title}>
                   {deck.title}
                 </Typography>
                 <Typography color="text.secondary">
-                  {deck.card_count} cards · {deck.due_count} due
+                  {deck.card_count} {deck.card_count === 1 ? 'card' : 'cards'} · {deck.due_count} due
                 </Typography>
               </CardContent>
             </CardActionArea>
@@ -79,7 +81,10 @@ export default function FlashcardsPage() {
               <IconButton aria-label={`Rename ${deck.title}`} onClick={() => setEditing({ deck })}>
                 <EditIcon />
               </IconButton>
-              <IconButton aria-label={`Delete ${deck.title}`} onClick={() => setDeleting(deck)}>
+              <IconButton aria-label={`Delete ${deck.title}`} onClick={() => {
+                  setDeleting(deck)
+                  setDeleteOpen(true)
+                }}>
                 <DeleteIcon />
               </IconButton>
             </CardActions>
@@ -87,13 +92,16 @@ export default function FlashcardsPage() {
         ))}
       </Box>
 
-      {editing && <DeckDialog initialTitle={editing.deck?.title} onSubmit={save} onClose={() => setEditing(null)} />}
+      {editing && <DeckDialog
+          initialTitle={editing.deck?.title}
+          pending={createDeck.isPending || renameDeck.isPending}
+          onSubmit={save} onClose={() => setEditing(null)} />}
       <ConfirmDialog
-        open={!!deleting}
+        open={deleteOpen}
         title="Delete deck?"
         message={`"${deleting?.title ?? ''}" and all its cards will be deleted.`}
         onConfirm={confirmDelete}
-        onClose={() => setDeleting(null)}
+        onClose={() => setDeleteOpen(false)}
       />
       <Snackbar open={!!snackbar} message={snackbar} autoHideDuration={6000} onClose={closeSnackbar} />
     </>
