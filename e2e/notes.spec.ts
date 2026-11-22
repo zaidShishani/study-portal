@@ -42,3 +42,33 @@ test('create folder, subfolder and page; saved markdown persists across reload',
   await page.getByRole('tab', { name: 'Preview' }).click()
   await expect(page.getByRole('heading', { name: 'Heading' })).toBeVisible()
 })
+
+// #58: moving a page out of a nested folder could render it twice and blank the page.
+test('moving a page between a nested folder and root 10 times keeps one tree item', async ({ page }) => {
+  const stamp = Date.now()
+  const sub = `E2E move sub ${stamp}`
+  const title = `E2E move page ${stamp}`
+  await page.goto('/notes')
+  await create(page, 'New folder', `E2E move folder ${stamp}`)
+  await create(page, 'New folder', sub)
+  await create(page, 'New page', title)
+  const item = page.getByRole('treeitem', { name: title })
+
+  async function moveTo(target: string) {
+    await page.getByRole('button', { name: 'Move' }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('combobox').click()
+    await page.getByRole('option', { name: target, exact: true }).click()
+    await dialog.getByRole('button', { name: 'Save' }).click()
+    await expect(dialog).toBeHidden()
+  }
+
+  for (let i = 0; i < 10; i++) {
+    await moveTo('(Root)')
+    await expect(item).toHaveCount(1)
+    await moveTo(sub)
+    await expect(item).toHaveCount(1)
+  }
+  await expect(page.getByRole('tree')).toBeVisible()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+})

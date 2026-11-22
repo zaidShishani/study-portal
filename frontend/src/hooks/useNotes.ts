@@ -47,10 +47,24 @@ export const useUpdateFolder = () => useNotesMutation(updateFolder, () => [FOLDE
 export const useDeleteFolder = () => useNotesMutation(deleteFolder, () => [FOLDERS])
 export const useCreatePage = () => useNotesMutation(createPage, (p) => (p ? [[...PAGES, p.folder_id]] : []))
 // A move invalidates all page lists (the old folder isn't known here); a plain save only its own list.
-export const useUpdatePage = () =>
-  useNotesMutation(updatePage, (p, arg) => [
-    [...KEY, 'page', arg.id],
-    'folder_id' in arg || !p ? PAGES : [...PAGES, p.folder_id],
-  ])
+export function useUpdatePage() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updatePage,
+    onSuccess: (p, arg) => {
+      if (!('folder_id' in arg)) return
+      // Drop the moved page from other cached lists now, so a stale old-folder list can't show it twice.
+      for (const [key, list] of queryClient.getQueriesData<NotePageItem[]>({ queryKey: PAGES })) {
+        if (key[2] !== p.folder_id && list) queryClient.setQueryData(key, list.filter((x) => x.id !== p.id))
+      }
+    },
+    onSettled: (p, _err, arg) =>
+      Promise.all(
+        [[...KEY, 'page', arg.id], 'folder_id' in arg || !p ? PAGES : [...PAGES, p.folder_id]].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      ),
+  })
+}
 export const useDeletePage = () =>
   useNotesMutation((p: NotePageItem) => deletePage(p.id), (_, p) => [[...PAGES, p.folder_id]])

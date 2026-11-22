@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Button, Paper, Snackbar, Stack, TextField, Typography } from '@mui/material'
 import { buildTree, type TreeLevel } from '../api/notes'
 import ConfirmDialog from '../components/ConfirmDialog'
+import ErrorBoundary from '../components/ErrorBoundary'
 import FolderTree from '../components/FolderTree'
 import MarkdownEditor from '../components/MarkdownEditor'
 import NoteDialog, { type FolderOption } from '../components/NoteDialog'
@@ -141,7 +142,9 @@ export default function NotesPage() {
           {folders.isSuccess && !tree.folders.length && !tree.pages.length && (
             <Typography color="text.secondary" sx={{ p: 1 }}>No notes yet.</Typography>
           )}
-          <FolderTree tree={tree} selected={selected} onSelect={select} expanded={expanded} onExpandedChange={setExpanded} />
+          <ErrorBoundary message="Couldn't show the notes tree. Reload the page.">
+            <FolderTree tree={tree} selected={selected} onSelect={select} expanded={expanded} onExpandedChange={setExpanded} />
+          </ErrorBoundary>
         </Paper>
 
         <Box sx={{ minWidth: 0 }}>
