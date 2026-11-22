@@ -55,6 +55,14 @@ class ProblemUpdate(InputModel):
         return v
 
 
+# Only the outcome comes from the client; stage and today are always server-side.
+class AttemptIn(InputModel):
+    """`minutes: null` (or omitted) leaves minutes unchanged, unlike PATCH where null clears it."""
+
+    result: LastResult
+    minutes: Minutes | None = None
+
+
 class ProblemOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
