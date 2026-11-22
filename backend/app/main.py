@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import cards, decks, me, problems, review
+from app.routers import cards, decks, me, notes, problems, review
 
 # shortcut: API docs (/docs, /openapi.json) are public; disable when deployed beyond localhost
 app = FastAPI(title="Study Portal")
@@ -24,3 +24,4 @@ app.include_router(decks.router)
 app.include_router(cards.router)
 app.include_router(review.router)
 app.include_router(problems.router)
+app.include_router(notes.router)
