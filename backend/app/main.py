@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.routers import me
 
 # shortcut: API docs (/docs, /openapi.json) are public; disable when deployed beyond localhost
 app = FastAPI(title="Study Portal")
@@ -16,3 +17,6 @@ app.add_middleware(
 @app.get("/api/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+app.include_router(me.router)
