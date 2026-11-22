@@ -55,6 +55,24 @@ export const PATTERNS = [
 ] as const
 export type Pattern = (typeof PATTERNS)[number]
 
+export type NoteFolder = {
+  id: number
+  parent_id: number | null
+  name: string
+}
+
+export type NotePageItem = {
+  id: number
+  title: string
+  folder_id: number | null
+  updated_at: string
+}
+
+export type NotePage = NotePageItem & {
+  content: string
+  created_at: string
+}
+
 export type ProblemStatus = 'due' | 'active' | 'retired' | 'all'
 
 export type LastResult = 'solved' | 'solved_with_hint' | 'failed'
