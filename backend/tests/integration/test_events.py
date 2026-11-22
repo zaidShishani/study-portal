@@ -79,7 +79,8 @@ def test_end_before_start_rejected(client: TestClient, db: Session):
     "rule",
     ["nope", "FREQ=HOURLY", "FREQ=MINUTELY", "FREQ=DAILY;BYHOUR=1,2", "FREQ=DAILY;INTERVAL=0",
      "EXRULE:FREQ=DAILY", "RRULE:FREQ=DAILY\nEXRULE:FREQ=WEEKLY", "FREQ=DAILY;UNTIL=20260105",
-     "FREQ=DAILY;" + "COUNT=1;" * 70, "FREQ=DAILY\x00"],
+     "FREQ=DAILY;" + "COUNT=1;" * 70, "FREQ=DAILY\x00", "DTSTART:20200101T000000 RRULE:FREQ=DAILY",
+     "FREQ=DAILY;COUNT=0", "FREQ=DAILY;UNTIL=20260101T000000Z"],
 )  # fmt: skip
 def test_invalid_rrule_rejected(client: TestClient, db: Session, rule: str):
     assert client.post(URL, json={"title": "x", "start_at": START, "rrule": rule}).status_code == 422
@@ -95,6 +96,13 @@ def test_rrule_revalidated_against_new_start(client: TestClient, db: Session):
     assert client.patch(f"{URL}/{event.id}", json={"start_at": "2026-01-05T09:00:00"}).status_code == 422
     r = client.patch(f"{URL}/{event.id}", json={"start_at": "2026-02-01T09:00:00Z"})
     assert r.status_code == 200
+
+
+def test_moving_start_past_until_rejected(client: TestClient, db: Session):
+    event = make_event(db, rrule="FREQ=DAILY;UNTIL=20260110T000000Z")
+    assert client.patch(f"{URL}/{event.id}", json={"start_at": "2026-01-11T09:00:00Z"}).status_code == 422
+    db.refresh(event)
+    assert event.start_at == datetime(2026, 1, 5, 9, tzinfo=UTC)
 
 
 @pytest.mark.parametrize("value,status", [(0, 201), (10080, 201), (-1, 422), (10081, 422)])
