@@ -64,6 +64,21 @@ def test_minimal_create_defaults(client: TestClient):
     }  # fmt: skip
 
 
+def test_duration_max_366_days(client: TestClient, db: Session):
+    ok = {"title": "x", "start_at": START, "end_at": "2027-01-06T09:00:00Z"}  # 366 days
+    assert client.post(URL, json=ok).status_code == 201
+    assert client.post(URL, json={**ok, "end_at": "2027-01-06T09:00:01Z"}).status_code == 422
+    event = make_event(db, end_at=datetime(2026, 1, 6, 9, tzinfo=UTC))
+    # Merged check: moving start back makes the stored end too far away.
+    assert client.patch(f"{URL}/{event.id}", json={"start_at": "2025-01-04T09:00:00Z"}).status_code == 422
+
+
+def test_fractional_seconds_truncated(client: TestClient):
+    r = client.post(URL, json={"title": "x", "start_at": "2026-01-05T09:00:00.5Z", "rrule": "FREQ=DAILY"})
+    assert r.status_code == 201
+    assert datetime.fromisoformat(r.json()["start_at"]) == datetime(2026, 1, 5, 9, tzinfo=UTC)
+
+
 def test_end_before_start_rejected(client: TestClient, db: Session):
     assert client.post(URL, json={"title": "x", "start_at": START, "end_at": "2026-01-05T08:59:59Z"}).status_code == 422
     assert client.post(URL, json={"title": "x", "start_at": START, "end_at": START}).status_code == 201

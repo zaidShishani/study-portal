@@ -25,7 +25,7 @@ def _require_str(v: object) -> object:
 
 def _near_now(v: datetime) -> datetime:
     check_near_now(v)  # bounds RRULE expansion cost
-    return v
+    return v.replace(microsecond=0)  # dateutil drops microseconds from dtstart
 
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200), NoNul]

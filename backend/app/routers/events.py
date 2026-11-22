@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import func, select
@@ -14,6 +14,8 @@ from app.services import rrule
 router = APIRouter(prefix="/api/events", tags=["events"])
 
 MAX_EVENTS = 500  # per user
+# Long events overlap a window with many occurrences; this keeps them in the hundreds.
+MAX_DURATION = timedelta(days=366)
 
 
 def get_own_event(event_id: int, user: User, db: Session) -> Event:
@@ -26,6 +28,8 @@ def get_own_event(event_id: int, user: User, db: Session) -> Event:
 def _check(start_at: datetime, end_at: datetime | None, rule: str | None) -> None:
     if end_at is not None and end_at < start_at:
         raise HTTPException(422, "end_at must not be before start_at")
+    if end_at is not None and end_at - start_at > MAX_DURATION:
+        raise HTTPException(422, "event must not last longer than 366 days")
     if rule is not None:
         try:
             rrule.validate(rule, start_at)

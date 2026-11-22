@@ -118,10 +118,58 @@ def test_check_near_now():
 
 
 def test_occurrence_cap(monkeypatch: pytest.MonkeyPatch):
-    # Allowed rules give at most one occurrence per day, so a 366-day window can't reach 1000;
-    # lower the cap to prove an infinite rule is cut off by it.
+    # Allowed rules start at most once per day and windows and durations are <= 366 days,
+    # so at most ~733 occurrences overlap; lower the cap to prove an infinite rule is cut off by it.
     monkeypatch.setattr(rrule, "MAX_OCCURRENCES", 50)
     assert len(occ(ev("FREQ=DAILY"), START, START + timedelta(days=366))) == 50
+
+
+def naive_occ(e: Event, start: datetime, end: datetime, tz: ZoneInfo) -> list[datetime]:
+    """Reference expansion straight from dtstart, without fast-forwarding."""
+    first = start - ((e.end_at or e.start_at) - e.start_at)
+    rule = validate(e.rrule, e.start_at.astimezone(tz))
+    return [s.astimezone(UTC) for s in rule.between(first, end, inc=True) if s < end]
+
+
+@pytest.mark.parametrize(
+    "rule",
+    ["FREQ=DAILY", "FREQ=DAILY;INTERVAL=3", "FREQ=DAILY;INTERVAL=366", "FREQ=WEEKLY",
+     "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,FR", "FREQ=WEEKLY;INTERVAL=5;BYDAY=SU,TU;WKST=SU",
+     "FREQ=WEEKLY;INTERVAL=7;BYDAY=TU", "FREQ=DAILY;UNTIL=20300101T000000Z"],
+)  # fmt: skip
+@pytest.mark.parametrize("hours", [0, 30])  # event duration
+@pytest.mark.parametrize(
+    "window_start",
+    [datetime(2026, 1, 1, 9, tzinfo=UTC), datetime(2026, 3, 8, 6, 59, tzinfo=UTC),
+     datetime(2029, 10, 31, tzinfo=UTC), datetime(2031, 6, 15, 12, 30, tzinfo=UTC)],
+)  # fmt: skip
+def test_fast_forward_matches_naive_expansion(rule: str, hours: int, window_start: datetime):
+    e = ev(rule, start=datetime(2018, 3, 11, 13, 30, tzinfo=UTC), end=datetime(2018, 3, 11, 13, 30, tzinfo=UTC) + timedelta(hours=hours))
+    end = window_start + timedelta(days=40)
+    assert occ(e, window_start, end, NY) == naive_occ(e, window_start, end, NY)
+
+
+def test_old_daily_events_expand_fast():
+    now = datetime.now(UTC)
+    now = now.replace(microsecond=0)  # stored starts have none (schema truncates)
+    events = [ev("FREQ=DAILY", start=now - timedelta(days=3650, minutes=i)) for i in range(500)]
+    began = time.perf_counter()
+    for e in events:
+        assert len(occ(e, now, now + timedelta(days=31), NY)) == 31
+    assert time.perf_counter() - began < 0.5
+
+
+def test_start_in_repeated_fall_back_hour_is_kept():
+    # 2026-11-01 01:30 EST (the second 01:30 in New York) = 06:30Z.
+    start = datetime(2026, 11, 1, 6, 30, tzinfo=UTC)
+    assert start.astimezone(NY).fold == 1
+    got = occ(ev("FREQ=DAILY", start=start), datetime(2026, 11, 1, tzinfo=UTC), datetime(2026, 11, 3, tzinfo=UTC), NY)
+    assert got == [start, datetime(2026, 11, 2, 6, 30, tzinfo=UTC)]
+
+
+def test_start_not_matching_byday_is_not_added():
+    # START is a Thursday; dateutil skips a dtstart that BYDAY doesn't match, and so do we.
+    assert at(1) not in occ(ev("FREQ=WEEKLY;BYDAY=MO"), START, at(10), NY)
 
 
 @pytest.mark.parametrize(
@@ -149,6 +197,7 @@ def test_occurrence_cap(monkeypatch: pytest.MonkeyPatch):
         "FREQ=DAILY;UNTIL=20251231T000000Z",  # before START
         "FREQ=DAILY;COUNT=2;COUNT=3",  # duplicate key
         "FREQ=DAILY;FREQ=WEEKLY",
+        "FREQ=DAILY;COUNT=2;UNTIL=20270101T000000Z",
         "FREQ=DAILY;DTSTART=20200101T000000Z",
         "DTSTART:20200101T000000Z",
         "DTSTART;TZID=/etc/passwd:20200101T000000",

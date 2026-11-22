@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 from itertools import islice, takewhile
 from zoneinfo import ZoneInfo
 
-from dateutil.rrule import rrule, rrulestr
+from dateutil.rrule import DAILY, WEEKLY, rrule, rrulestr
 
 from app.models.events import Event
 
@@ -57,6 +57,8 @@ def validate(rule: str, dtstart: datetime) -> rrule:
         raise ValueError("COUNT must be 1-1000")
     if "UNTIL" in params and not params["UNTIL"].endswith("Z"):
         raise ValueError("UNTIL must be in UTC (ending in Z)")
+    if "UNTIL" in params and "COUNT" in params:
+        raise ValueError("COUNT and UNTIL cannot be combined")
     try:
         parsed = rrulestr(rule, dtstart=dtstart)
     except Exception as e:  # the parser raises ValueError, IndexError, ... on bad input
@@ -82,9 +84,31 @@ def occurrences(event: Event, start: datetime, end: datetime, tz: ZoneInfo) -> l
     check_near_now(end)
     # An occurrence overlaps if it starts before `end` and ends at or after `start`.
     first = start - ((event.end_at or event.start_at) - event.start_at)
+    local_start = event.start_at.astimezone(tz)
     if event.rrule is None:
         starts = iter([event.start_at])
     else:
-        starts = validate(event.rrule, event.start_at.astimezone(tz)).xafter(first, inc=True)
+        rule = _fast_forward(validate(event.rrule, local_start), first)
+        # dateutil yields a start in the repeated fall-back hour (fold=1) an hour early (fold=0);
+        # same-zone == ignores fold, so this puts the real start back.
+        starts = (local_start if s == local_start else s for s in rule)
     in_window = takewhile(lambda s: s < end, (s for s in starts if s >= first))
     return [s.astimezone(UTC) for s in islice(in_window, MAX_OCCURRENCES)]
+
+
+def _fast_forward(rule: rrule, before: datetime) -> rrule:
+    """Move a DAILY/WEEKLY rule's dtstart by whole periods to just before `before`.
+
+    dateutil iterates from dtstart, so this keeps expansion cost independent of the event's age.
+    Whole periods keep the interval, weekday and WKST alignment; wall-clock time is kept by
+    shifting the local date. COUNT rules are left alone (skipping would change what counts).
+    """
+    if rule._count is not None or rule._freq not in (DAILY, WEEKLY):
+        return rule
+    period = rule._interval * (7 if rule._freq == WEEKLY else 1)
+    local = rule._dtstart.replace(tzinfo=None)
+    # One period of margin, so earlier BYDAYs in that week and DST offsets are still covered.
+    n = (before.astimezone(rule._tzinfo).replace(tzinfo=None) - local).days // period - 1
+    if n <= 0:
+        return rule
+    return rule.replace(dtstart=(local + timedelta(days=n * period)).replace(tzinfo=rule._tzinfo))
