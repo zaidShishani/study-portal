@@ -3,6 +3,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app.core.time import today_for
@@ -76,7 +77,7 @@ def test_all_sections(client: TestClient, db: Session):
     body = get(client, today - timedelta(days=3), today + timedelta(days=10))
     d = lambda n: (today + timedelta(days=n)).isoformat()  # noqa: E731
 
-    assert "truncated" not in body
+    assert body["truncated"] is False and "invalid_event_ids" not in body
     gym = [e for e in body["events"] if e["event_id"] == s["daily"].id]
     # Recurring: one occurrence per day of the 14-day window, at the original time of day.
     assert [datetime.fromisoformat(e["start"]).date() for e in gym] == [
@@ -144,7 +145,7 @@ def test_other_users_data_absent(client: TestClient, db: Session, other_user: Us
     today = today_for(db.get(User, 1))
     seed(db, 1, today)
     body = get(client, today - timedelta(days=3), today + timedelta(days=10))
-    assert body == {"events": [], "card_due": [], "problems_due": [], "checkpoints": []}
+    assert body == {"events": [], "card_due": [], "problems_due": [], "checkpoints": [], "truncated": False}
 
 
 @pytest.mark.parametrize(
@@ -158,6 +159,10 @@ def test_other_users_data_absent(client: TestClient, db: Session, other_user: Us
         {"from": "yesterday", "to": "2026-01-01"},
         {"from": "0001-01-01", "to": "0001-01-02"},
         {"from": "9999-12-30", "to": "9999-12-31"},
+        {"from": "2026-01-01T00:00", "to": "2026-01-02"},
+        {"from": "2026-01-01", "to": "2026-01-02T00:00:00Z"},
+        {"from": "1767225600", "to": "2026-01-02"},
+        {"from": "20260101", "to": "20260102"},
     ],
 )
 def test_window_validation(client: TestClient, params: dict):
@@ -179,3 +184,57 @@ def test_recurring_keeps_local_time_across_dst(client: TestClient, db: Session):
     assert [(s.date(), s.hour) for s in local] == [
         (date(2026, 10, 26), 9), (date(2026, 11, 2), 9), (date(2026, 11, 9), 9)
     ]  # fmt: skip
+
+
+def test_overdue_not_shown_in_past_window(client: TestClient, db: Session):
+    today = today_for(db.get(User, 1))
+    seed(db, 1, today)
+    body = get(client, today - timedelta(days=10), today - timedelta(days=1))
+    assert body["card_due"] == [] and body["problems_due"] == []
+
+
+def test_window_within_ten_years_of_today(client: TestClient, db: Session):
+    today = today_for(db.get(User, 1))
+    for first, ok in ((today - timedelta(days=3653), True), (today - timedelta(days=3654), False)):
+        assert client.get(URL, params={"from": first.isoformat(), "to": first.isoformat()}).status_code == (
+            200 if ok else 422
+        )
+    for last, ok in ((today + timedelta(days=3653), True), (today + timedelta(days=3654), False)):
+        assert client.get(URL, params={"from": last.isoformat(), "to": last.isoformat()}).status_code == (
+            200 if ok else 422
+        )
+
+
+def test_invalid_stored_rrule_is_skipped(client: TestClient, db: Session):
+    at = datetime(2026, 3, 1, 9, tzinfo=UTC)
+    good = Event(user_id=1, title="ok", start_at=at)
+    bad = Event(user_id=1, title="bad", start_at=at, rrule="FREQ=DAILY")
+    db.add_all([good, bad])
+    db.flush()
+    db.execute(update(Event).where(Event.id == bad.id).values(rrule="FREQ=HOURLY"))  # bypasses API validation
+    db.expire_all()
+    body = get(client, date(2026, 3, 1), date(2026, 3, 2))
+    assert [e["event_id"] for e in body["events"]] == [good.id]
+    assert body["invalid_event_ids"] == [bad.id]
+
+
+def test_event_ending_at_window_start_excluded(client: TestClient, db: Session):
+    # 22:00-24:00 UTC (user tz is UTC): touches Mar 2 only at its start instant.
+    at = datetime(2026, 3, 1, 22, tzinfo=UTC)
+    one_off = Event(user_id=1, title="one", start_at=at, end_at=at + timedelta(hours=2))
+    daily = Event(user_id=1, title="daily", start_at=at, end_at=at + timedelta(hours=2), rrule="FREQ=DAILY;COUNT=1")
+    db.add_all([one_off, daily])
+    db.flush()
+    assert get(client, date(2026, 3, 2), date(2026, 3, 2))["events"] == []
+    assert len(get(client, date(2026, 3, 1), date(2026, 3, 1))["events"]) == 2
+
+
+def test_derived_lists_capped(client: TestClient, db: Session):
+    today = today_for(db.get(User, 1))
+    db.add_all(
+        Problem(user_id=1, title=f"p{i}", difficulty="Easy", pattern="DP", stage=0, due_date=today)
+        for i in range(1001)
+    )
+    db.flush()
+    body = get(client, today, today)
+    assert len(body["problems_due"]) == 1000 and body["truncated"] is True
