@@ -4,6 +4,7 @@ from alembic import context
 from sqlalchemy import create_engine
 
 import app.models.decks  # noqa: F401  registers tables on Base.metadata
+import app.models.events  # noqa: F401
 import app.models.notes  # noqa: F401
 import app.models.problems  # noqa: F401
 import app.models.users  # noqa: F401
