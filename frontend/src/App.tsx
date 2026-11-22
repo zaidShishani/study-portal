@@ -7,6 +7,7 @@ import FlashcardsPage from './pages/FlashcardsPage'
 import LeetCodePage from './pages/LeetCodePage'
 import NotFoundPage from './pages/NotFoundPage'
 import NotesPage from './pages/NotesPage'
+import ReviewPage from './pages/ReviewPage'
 import RoadmapsPage from './pages/RoadmapsPage'
 import TodayPage from './pages/TodayPage'
 
@@ -17,7 +18,9 @@ export default function App() {
       <Route element={<Layout />}>
         <Route index element={<TodayPage />} />
         <Route path="flashcards" element={<FlashcardsPage />} />
+        <Route path="flashcards/review" element={<ReviewPage />} />
         <Route path="flashcards/:deckId" element={<DeckPage />} />
+        <Route path="flashcards/:deckId/review" element={<ReviewPage />} />
         <Route path="leetcode" element={<LeetCodePage />} />
         <Route path="notes" element={<NotesPage />} />
         <Route path="roadmaps" element={<RoadmapsPage />} />
