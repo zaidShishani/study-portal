@@ -53,6 +53,12 @@ class ProblemUpdate(InputModel):
         return v
 
 
+# Only the outcome comes from the client; stage and today are always server-side.
+class AttemptIn(InputModel):
+    result: LastResult
+    minutes: Minutes | None = None
+
+
 class ProblemOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
