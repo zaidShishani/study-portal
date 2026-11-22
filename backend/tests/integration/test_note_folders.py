@@ -131,3 +131,31 @@ def test_out_of_range_id_is_422(client: TestClient):
     assert client.post(URL, json={"name": "x", "parent_id": big}).status_code == 422
     assert client.post(URL, json={"name": "x", "parent_id": 0}).status_code == 422
     assert client.patch(f"{URL}/1", json={"parent_id": big}).status_code == 422
+
+
+def test_existing_cycle_does_not_hang_move(client: TestClient, db: Session):
+    # A cycle can't be made through the API; seed one to prove the CTE still terminates.
+    a = make_folder(db, "a")
+    b = make_folder(db, "b", a.id)
+    a.parent_id = b.id
+    target = make_folder(db, "target")
+    db.flush()
+
+    assert client.patch(f"{URL}/{a.id}", json={"parent_id": b.id}).status_code == 400
+    assert client.patch(f"{URL}/{a.id}", json={"parent_id": target.id}).status_code == 200
+
+
+def test_rename_with_foreign_parent_changes_nothing(client: TestClient, db: Session, other_user: User):
+    foreign = make_folder(db, "User 1 folder")
+    own = client.post(URL, json={"name": "Own"}).json()
+
+    r = client.patch(f"{URL}/{own['id']}", json={"name": "Renamed", "parent_id": foreign.id})
+    assert r.status_code == 404
+    db.expire_all()
+    assert db.get(NoteFolder, own["id"]).name == "Own"
+
+
+def test_boolean_parent_id_is_422(client: TestClient, db: Session):
+    folder = make_folder(db)
+    assert client.post(URL, json={"name": "x", "parent_id": True}).status_code == 422
+    assert client.patch(f"{URL}/{folder.id}", json={"parent_id": True}).status_code == 422
