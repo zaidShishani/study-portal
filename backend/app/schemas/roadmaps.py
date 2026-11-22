@@ -10,6 +10,8 @@ Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, ma
 Description = Annotated[str, Field(max_length=10_000), NoNul]
 # Strict so JSON true isn't coerced to 1; bounded to Postgres integer.
 CheckpointId = Annotated[StrictInt, Field(gt=0, le=2_147_483_647)]
+# shortcut: caps a roadmap at 1000 checkpoints (create and reorder); raise if roadmaps get that long.
+MAX_CHECKPOINTS = 1000
 
 
 def _not_null(v: object) -> object:
@@ -50,8 +52,7 @@ class CheckpointUpdate(InputModel):
 
 
 class CheckpointOrder(InputModel):
-    # shortcut: caps reorder at 1000 checkpoints per roadmap; raise if roadmaps get that long.
-    ids: list[CheckpointId] = Field(max_length=1000)
+    ids: list[CheckpointId] = Field(max_length=MAX_CHECKPOINTS)
 
 
 class CheckpointOut(BaseModel):

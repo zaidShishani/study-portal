@@ -7,6 +7,7 @@ from app.models.roadmaps import Checkpoint, Roadmap
 from app.models.users import User
 from app.schemas.common import Id
 from app.schemas.roadmaps import (
+    MAX_CHECKPOINTS,
     CheckpointCreate,
     CheckpointOrder,
     CheckpointOut,
@@ -22,7 +23,7 @@ router = APIRouter(tags=["roadmaps"])
 
 def get_own_roadmap(roadmap_id: int, user: User, db: Session, lock: bool = False) -> Roadmap:
     query = select(Roadmap).where(Roadmap.id == roadmap_id, Roadmap.user_id == user.id)
-    # lock=True serializes writers that read then rewrite this roadmap's positions (append, reorder).
+    # lock=True serializes writers that read then change this roadmap's checkpoints (append, reorder, delete).
     roadmap = db.scalar(query.with_for_update() if lock else query)
     if roadmap is None:
         raise HTTPException(404, "Roadmap not found")
@@ -117,7 +118,11 @@ def create_checkpoint(
     roadmap_id: Id, body: CheckpointCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> Checkpoint:
     roadmap = get_own_roadmap(roadmap_id, user, db, lock=True)
-    last = db.scalar(select(func.max(Checkpoint.position)).where(Checkpoint.roadmap_id == roadmap.id))
+    count, last = db.execute(
+        select(func.count(), func.max(Checkpoint.position)).where(Checkpoint.roadmap_id == roadmap.id)
+    ).one()
+    if count >= MAX_CHECKPOINTS:
+        raise HTTPException(409, "Roadmap is full")
     checkpoint = Checkpoint(roadmap_id=roadmap.id, position=0 if last is None else last + 1, **body.model_dump())
     db.add(checkpoint)
     db.commit()
@@ -159,6 +164,8 @@ def update_checkpoint(
 def delete_checkpoint(
     checkpoint_id: Id, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> Response:
-    db.delete(get_own_checkpoint(checkpoint_id, user, db))
+    checkpoint = get_own_checkpoint(checkpoint_id, user, db)
+    get_own_roadmap(checkpoint.roadmap_id, user, db, lock=True)  # else a parallel reorder hits a vanished row
+    db.delete(checkpoint)
     db.commit()
     return Response(status_code=204)

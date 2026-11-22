@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.roadmaps import Checkpoint, Roadmap
 from app.models.users import User
+from app.schemas.roadmaps import MAX_CHECKPOINTS
 
 URL = "/api/roadmaps"
 BIG = 2_147_483_648
@@ -89,6 +90,14 @@ def test_checkpoint_crud_and_append_order(client: TestClient, db: Session):
     assert [c["title"] for c in detail["checkpoints"]] == ["uno", "three", "four"]
 
 
+def test_create_checkpoint_rejects_full_roadmap(client: TestClient, db: Session):
+    roadmap = make_roadmap(db)
+    db.add_all(Checkpoint(roadmap_id=roadmap.id, position=i, title="C") for i in range(MAX_CHECKPOINTS))
+    db.flush()
+    r = client.post(f"{URL}/{roadmap.id}/checkpoints", json={"title": "one too many"})
+    assert (r.status_code, r.json()["detail"]) == (409, "Roadmap is full")
+
+
 def test_toggle_done(client: TestClient, db: Session):
     checkpoint = make_checkpoint(db, make_roadmap(db), 0)
     url = f"/api/checkpoints/{checkpoint.id}"
@@ -116,7 +125,9 @@ def test_reorder_empty_roadmap(client: TestClient, db: Session):
     assert (r.status_code, r.json()) == (200, [])
 
 
-@pytest.mark.parametrize("case", ["missing", "extra", "duplicate", "foreign", "other_roadmap"])
+@pytest.mark.parametrize(
+    "case", ["missing", "empty", "extra", "duplicate", "duplicate_same_length", "foreign", "other_roadmap"]
+)
 def test_reorder_rejects_bad_ids(client: TestClient, db: Session, case: str):
     roadmap = make_roadmap(db)
     a, b = (make_checkpoint(db, roadmap, i).id for i in range(2))
@@ -126,8 +137,10 @@ def test_reorder_rejects_bad_ids(client: TestClient, db: Session, case: str):
     foreign = make_checkpoint(db, make_roadmap(db, user_id=stranger.id), 0).id
     ids = {
         "missing": [a],
+        "empty": [],
         "extra": [a, b, BIG - 1],
         "duplicate": [a, b, a],
+        "duplicate_same_length": [a, a],
         "foreign": [a, b, foreign],
         "other_roadmap": [a, sibling],
     }[case]
