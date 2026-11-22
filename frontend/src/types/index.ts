@@ -59,6 +59,12 @@ export type ProblemStatus = 'due' | 'active' | 'retired' | 'all'
 
 export type LastResult = 'solved' | 'solved_with_hint' | 'failed'
 
+export const RESULT_LABELS: Record<LastResult, string> = {
+  solved: 'Solved',
+  solved_with_hint: 'Solved with hint',
+  failed: 'Failed',
+}
+
 // Fields the client may send on create/update; the rest are server-owned.
 export type ProblemInput = {
   title: string

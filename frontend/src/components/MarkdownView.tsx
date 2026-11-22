@@ -1,6 +1,7 @@
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Box } from '@mui/material'
+import type { ReactNode } from 'react'
+import { Box, Typography, type TypographyProps } from '@mui/material'
 
 type MdNode = { type: string; value?: string; children?: MdNode[] }
 
@@ -19,6 +20,24 @@ function htmlAsText() {
   return walk
 }
 
+// Markdown headings sit two levels below the page's h1/h2 so notes never outrank the page structure.
+const heading =
+  (component: 'h3' | 'h4' | 'h5' | 'h6', variant: TypographyProps['variant']) =>
+  ({ children }: { children?: ReactNode }) => (
+    <Typography component={component} variant={variant} gutterBottom sx={{ mt: 2 }}>
+      {children}
+    </Typography>
+  )
+
+const HEADINGS = {
+  h1: heading('h3', 'h6'),
+  h2: heading('h4', 'subtitle1'),
+  h3: heading('h5', 'subtitle2'),
+  h4: heading('h6', 'subtitle2'),
+  h5: heading('h6', 'subtitle2'),
+  h6: heading('h6', 'subtitle2'),
+}
+
 export default function MarkdownView({ children }: { children: string }) {
   return (
     <Box
@@ -34,6 +53,7 @@ export default function MarkdownView({ children }: { children: string }) {
       <Markdown
         remarkPlugins={[remarkGfm, htmlAsText]}
         components={{
+          ...HEADINGS,
           a: ({ node: _node, ...props }) =>
             props.href?.startsWith('#') ? (
               <a {...props} />
