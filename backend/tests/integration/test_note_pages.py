@@ -68,6 +68,8 @@ def test_create_in_folder_and_move(client: TestClient, db: Session):
 
     r = client.patch(f"{URL}/{page['id']}", json={"folder_id": b.id})
     assert r.status_code == 200 and r.json()["folder_id"] == b.id
+    r = client.patch(f"{URL}/{page['id']}", json={"title": "kept in b"})
+    assert r.status_code == 200 and r.json()["folder_id"] == b.id
     r = client.patch(f"{URL}/{page['id']}", json={"folder_id": None})
     assert r.status_code == 200 and r.json()["folder_id"] is None
     r = client.patch(f"{URL}/{page['id']}", json={"title": "kept at root"})
