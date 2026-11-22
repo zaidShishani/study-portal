@@ -58,7 +58,7 @@ function renderPage() {
   )
 }
 
-const calls = (fetchMock: ReturnType<typeof mockApi>, method: string) =>
+const calls = (fetchMock: { mock: { calls: [string, RequestInit?][] } }, method: string) =>
   fetchMock.mock.calls.filter(([, init]) => init?.method === method)
 
 test('renders decks from the API with counts and links to the deck', async () => {
@@ -98,6 +98,30 @@ test('create dialog validates, trims and submits', async () => {
   expect(await screen.findByText('Chemistry')).toBeTruthy()
   expect(JSON.parse(String(calls(fetchMock, 'POST')[0][1]?.body))).toEqual({ title: 'Chemistry' })
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+})
+
+test('Save is disabled while a create is pending, so double-submit sends one POST', async () => {
+  const api = mockApi([])
+  // Hold the POST open so the pending state is observable.
+  let release = () => {}
+  const held = new Promise<void>((r) => (release = r))
+  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'POST') await held
+    return api(url, init)
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  renderPage()
+  fireEvent.click(screen.getByRole('button', { name: 'New deck' }))
+  const dialog = screen.getByRole('dialog')
+  fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'Chemistry' } })
+  const save = within(dialog).getByRole('button', { name: 'Save' }) as HTMLButtonElement
+  fireEvent.click(save)
+  await waitFor(() => expect(save.disabled).toBe(true))
+  fireEvent.click(save)
+  fireEvent.submit(save.closest('form')!)
+  release()
+  expect(await screen.findByText('Chemistry')).toBeTruthy()
+  expect(calls(fetchMock, 'POST')).toHaveLength(1)
 })
 
 test('rename prefills the title and PATCHes the deck', async () => {

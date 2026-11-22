@@ -86,6 +86,7 @@ unretire -> stage = 1, due = today + 1, retired_at = NULL
 ## Security baseline (every ticket)
 - **Ownership:** every query filtered by `current_user.id`; another user's row → 404. Integration tests seed a second user and assert this.
 - **Validation at the boundary:** Pydantic max lengths, enums, `HttpUrl` (http/https) for links, bounded ints.
+- Request bodies extend `schemas/common.InputModel` (extra=forbid); user strings reject NUL; path ids use `schemas/common.Id`.
 - **RRULE:** validated on save; expansion always bounded by the request window (max 1 year) and capped (~1000 occurrences).
 - **SQL:** SQLAlchemy expressions / bound params only. No f-string SQL.
 - **XSS:** react-markdown without `rehype-raw`; no `dangerouslySetInnerHTML`; external links `rel="noopener noreferrer"`.

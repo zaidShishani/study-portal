@@ -2,13 +2,19 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Box } from '@mui/material'
 
-type MdNode = { type: string; children?: MdNode[] }
+type MdNode = { type: string; value?: string; children?: MdNode[] }
+
+const BLOCK_PARENTS = new Set(['root', 'blockquote', 'listItem'])
 
 // Raw HTML is never rendered (no rehype-raw); turn it into plain text so the user sees what they typed.
 function htmlAsText() {
   const walk = (node: MdNode) => {
-    if (node.type === 'html') node.type = 'text'
-    node.children?.forEach(walk)
+    node.children?.forEach((child, i, siblings) => {
+      if (child.type !== 'html') return walk(child)
+      const text = { type: 'text', value: child.value }
+      // Block-level HTML gets its own paragraph so separate blocks don't run together.
+      siblings[i] = BLOCK_PARENTS.has(node.type) ? { type: 'paragraph', children: [text] } : text
+    })
   }
   return walk
 }
@@ -28,7 +34,12 @@ export default function MarkdownView({ children }: { children: string }) {
       <Markdown
         remarkPlugins={[remarkGfm, htmlAsText]}
         components={{
-          a: ({ node: _node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+          a: ({ node: _node, ...props }) =>
+            props.href?.startsWith('#') ? (
+              <a {...props} />
+            ) : (
+              <a {...props} target="_blank" rel="noopener noreferrer" />
+            ),
         }}
       >
         {children}
