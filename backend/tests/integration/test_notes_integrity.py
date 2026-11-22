@@ -6,6 +6,8 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.deps import get_current_user
+from app.main import app
 from app.models.notes import NoteFolder
 from app.models.users import User
 from app.routers import notes
@@ -40,6 +42,7 @@ def test_same_user_link_still_works(db: Session):
     db.execute(text("INSERT INTO note_folders (user_id, name) VALUES (1, 'p')"))
     parent_id = db.scalar(text("SELECT max(id) FROM note_folders WHERE user_id = 1"))
     db.execute(text("INSERT INTO note_folders (user_id, parent_id, name) VALUES (1, :p, 'c')"), {"p": parent_id})
+    assert db.scalar(text("SELECT count(*) FROM note_folders WHERE parent_id = :p AND user_id = 1"), {"p": parent_id}) == 1
 
 
 def test_folder_gone_after_ownership_check_is_404(client: TestClient, monkeypatch: pytest.MonkeyPatch):
@@ -51,6 +54,13 @@ def test_folder_gone_after_ownership_check_is_404(client: TestClient, monkeypatc
     assert client.patch(f"{PAGES}/{page_id}", json={"folder_id": 999999}).status_code == 404
     assert client.post("/api/notes/folders", json={"name": "x", "parent_id": 999999}).status_code == 404
     assert client.get(f"{PAGES}/{page_id}").json()["folder_id"] is None
+
+
+def test_other_integrity_errors_are_not_turned_into_404(client: TestClient):
+    # A current user missing from the DB violates the users FK, not a folder link: must surface, not 404.
+    app.dependency_overrides[get_current_user] = lambda: User(id=999999)
+    with pytest.raises(IntegrityError, match="note_folders_user_id_fkey"):
+        client.post("/api/notes/folders", json={"name": "x"})
 
 
 def test_oversized_body_is_413(client: TestClient):

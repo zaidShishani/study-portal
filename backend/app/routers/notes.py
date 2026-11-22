@@ -29,13 +29,18 @@ def get_own_folder(folder_id: int, user: User, db: Session) -> NoteFolder:
     return folder
 
 
+FOLDER_LINK_FKS = {"fk_note_folders_parent_owner", "fk_note_pages_folder_owner"}
+
+
 def commit_or_folder_404(db: Session) -> None:
     """Commit a folder link; a folder deleted after its ownership check fails the FK -> 404, not 500."""
     try:
         db.commit()
-    except IntegrityError:
+    except IntegrityError as e:
         db.rollback()
-        raise HTTPException(404, "Folder not found") from None
+        if getattr(getattr(e.orig, "diag", None), "constraint_name", None) in FOLDER_LINK_FKS:
+            raise HTTPException(404, "Folder not found") from None
+        raise
 
 
 def _subtree_ids(folder_id: int, user: User, db: Session) -> set[int]:
