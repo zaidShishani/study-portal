@@ -29,8 +29,8 @@ services:
     # Only source dirs are mounted: the image keeps its own node_modules, so Docker
     # never creates a root-owned frontend/node_modules on the host. Config/deps changes need --build.
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
     depends_on:
       - backend
 
