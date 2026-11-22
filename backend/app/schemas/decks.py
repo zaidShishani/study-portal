@@ -21,6 +21,6 @@ class DeckOut(BaseModel):
     title: str
     created_at: datetime
     updated_at: datetime
-    # Cards land in #8, which computes these.
+    # Not deck columns: the router fills these from card counts.
     card_count: int = 0
     due_count: int = 0
