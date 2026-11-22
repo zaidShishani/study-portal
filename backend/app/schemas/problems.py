@@ -6,6 +6,7 @@ from pydantic import (
     ConfigDict,
     Field,
     HttpUrl,
+    StrictInt,
     StringConstraints,
     UrlConstraints,
     field_validator,
@@ -16,10 +17,11 @@ from app.schemas.common import InputModel, NoNul
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255), NoNul]
 # HttpUrl allows only http/https, so `javascript:` links are rejected.
+# shortcut: link max_length is checked before percent-encoding (stored ≤ ~3x)
 Link = Annotated[HttpUrl, UrlConstraints(max_length=2048)]
 # Markdown: whitespace is kept as typed.
 Text = Annotated[str, Field(max_length=10_000), NoNul]
-Minutes = Annotated[int, Field(ge=0, le=1440)]
+Minutes = Annotated[StrictInt, Field(ge=0, le=1440)]  # strict: true or "5" is a 422, not 1 or 5
 
 
 # Scheduling and attempt fields (stage, due_date, review_count, retired_at, last_result,
@@ -57,7 +59,6 @@ class ProblemOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    user_id: int
     title: str
     link: str | None
     difficulty: Difficulty
