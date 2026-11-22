@@ -144,6 +144,21 @@ test('new checkpoint dialog POSTs title, description and empty date', async () =
   expect(bodyOf(calls(fetchMock, 'POST')[0])).toEqual({ title: 'Ship it', description: 'a\nb', target_date: null })
 })
 
+test('a partly typed target date blocks Save instead of saving no date', async () => {
+  const fetchMock = mockApi([])
+  renderPage()
+  await screen.findByText('No checkpoints yet.')
+  fireEvent.click(screen.getByRole('button', { name: 'New checkpoint' }))
+  const dialog = screen.getByRole('dialog')
+  fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'Dated' } })
+  const month = within(dialog).getByRole('spinbutton', { name: 'Month' })
+  fireEvent.focus(month)
+  fireEvent.keyDown(month, { key: 'ArrowUp' }) // fills the month only; day and year stay empty
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+  expect(await within(dialog).findByText('Enter a valid date')).toBeTruthy()
+  expect(calls(fetchMock, 'POST')).toHaveLength(0)
+})
+
 test('a full roadmap (409) shows the error and keeps the dialog open', async () => {
   const api = mockApi([])
   vi.stubGlobal('fetch', async (url: string, init?: RequestInit) =>

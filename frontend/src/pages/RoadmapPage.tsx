@@ -132,7 +132,14 @@ export default function RoadmapPage() {
               key={c.id}
               component="li"
               variant="outlined"
-              sx={{ p: 1.5, display: 'flex', gap: 1, alignItems: 'flex-start', borderColor: overdue ? 'error.main' : undefined }}
+              sx={{
+                p: 1.5,
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 1,
+                alignItems: 'flex-start',
+                borderColor: overdue ? 'error.main' : undefined,
+              }}
             >
               <Checkbox
                 checked={!!c.done_at}
@@ -140,7 +147,8 @@ export default function RoadmapPage() {
                 onChange={() => toggle(c)}
                 slotProps={{ input: { 'aria-label': `Done: ${c.title}` } }}
               />
-              <Box sx={{ flex: 1, minWidth: 0, pt: 1 }}>
+              {/* Text keeps >=180px; on narrow screens the buttons wrap to their own line. */}
+              <Box sx={{ flex: '1 1 180px', minWidth: 0, pt: 1 }}>
                 <Typography
                   sx={{ overflowWrap: 'anywhere', textDecoration: c.done_at ? 'line-through' : undefined }}
                 >
@@ -158,26 +166,28 @@ export default function RoadmapPage() {
                   </Typography>
                 )}
               </Box>
-              <IconButton
-                aria-label={`Move up: ${c.title}`}
-                disabled={i === 0 || reorder.isPending}
-                onClick={() => move(i, -1)}
-              >
-                <ArrowUpwardIcon />
-              </IconButton>
-              <IconButton
-                aria-label={`Move down: ${c.title}`}
-                disabled={i === checkpoints.length - 1 || reorder.isPending}
-                onClick={() => move(i, 1)}
-              >
-                <ArrowDownwardIcon />
-              </IconButton>
-              <IconButton aria-label={`Edit: ${c.title}`} onClick={() => setEditing({ checkpoint: c })}>
-                <EditIcon />
-              </IconButton>
-              <IconButton aria-label={`Delete: ${c.title}`} onClick={() => setDeleting(c)}>
-                <DeleteIcon />
-              </IconButton>
+              <Box sx={{ display: 'flex', ml: 'auto' }}>
+                <IconButton
+                  aria-label={`Move up: ${c.title}`}
+                  disabled={i === 0 || reorder.isPending}
+                  onClick={() => move(i, -1)}
+                >
+                  <ArrowUpwardIcon />
+                </IconButton>
+                <IconButton
+                  aria-label={`Move down: ${c.title}`}
+                  disabled={i === checkpoints.length - 1 || reorder.isPending}
+                  onClick={() => move(i, 1)}
+                >
+                  <ArrowDownwardIcon />
+                </IconButton>
+                <IconButton aria-label={`Edit: ${c.title}`} onClick={() => setEditing({ checkpoint: c })}>
+                  <EditIcon />
+                </IconButton>
+                <IconButton aria-label={`Delete: ${c.title}`} onClick={() => setDeleting(c)}>
+                  <DeleteIcon />
+                </IconButton>
+              </Box>
             </Paper>
           )
         })}

@@ -3,6 +3,7 @@ import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextF
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import type { DateValidationError } from '@mui/x-date-pickers/models'
 import dayjs, { type Dayjs } from 'dayjs'
 import type { CheckpointInput } from '../types'
 
@@ -21,6 +22,11 @@ export default function CheckpointDialog({ initial, pending = false, onSubmit, o
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [date, setDate] = useState<Dayjs | null>(initial?.target_date ? dayjs(initial.target_date) : null)
+  // MUI reports invalid dates (e.g. Feb 30) via onError, but a partly typed one ("01/DD/YYYY") reaches
+  // onChange as null with no error; only the field's hidden input text tells it apart from empty.
+  const [dateError, setDateError] = useState<DateValidationError | null>(null)
+  const [partialDate, setPartialDate] = useState(false)
+  const dateInput = useRef<HTMLInputElement>(null)
   const [touched, setTouched] = useState(false)
   // isPending lands a render late; the ref blocks a same-tick double click.
   const busy = useRef(false)
@@ -29,13 +35,15 @@ export default function CheckpointDialog({ initial, pending = false, onSubmit, o
   const errors = {
     title: !trimmed ? 'Title is required' : trimmed.length > MAX_TITLE ? `Max ${MAX_TITLE} characters` : '',
     description: description.length > MAX_TEXT ? 'Max 10,000 characters' : '',
-    date: date && !date.isValid() ? 'Enter a valid date' : '',
+    date: dateError || partialDate ? 'Enter a valid date' : '',
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setTouched(true)
-    if (Object.values(errors).some(Boolean) || busy.current) return
+    const partial = !date && !!dateInput.current?.value
+    setPartialDate(partial)
+    if (Object.values(errors).some(Boolean) || partial || busy.current) return
     busy.current = true
     const input: CheckpointInput = {
       title: trimmed,
@@ -74,10 +82,19 @@ export default function CheckpointDialog({ initial, pending = false, onSubmit, o
               <DatePicker
                 label="Target date"
                 value={date}
-                onChange={setDate}
+                onChange={(value) => {
+                  setDate(value)
+                  setPartialDate(false)
+                }}
+                onError={setDateError}
                 slotProps={{
                   field: { clearable: true },
-                  textField: { error: touched && !!errors.date, helperText: touched && errors.date },
+                  // undefined (not false) keeps MUI's own red outline for a partly filled field on blur.
+                  textField: {
+                    inputRef: dateInput,
+                    error: touched && errors.date ? true : undefined,
+                    helperText: touched && errors.date,
+                  },
                 }}
               />
             </LocalizationProvider>
