@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from app.core.time import today_for
@@ -145,3 +146,38 @@ def test_other_user_gets_404(client: TestClient, db: Session, deck: Deck, today:
 
     db.expire_all()
     assert (due.stage, due.review_count, retired.retired_at is not None) == (0, 0, True)
+
+
+def test_other_user_gets_404_not_409(client: TestClient, db: Session, deck: Deck, today: date, other_user: User):
+    """Ownership is checked before state, so 409 never leaks a foreign card's existence or state."""
+    retired = add_card(db, deck, None, stage=4, retired_at=datetime.now(UTC))
+    future = add_card(db, deck, today + timedelta(days=2), stage=1)
+    active = add_card(db, deck, today)
+
+    assert client.post(f"/api/cards/{retired.id}/review", json={"correct": True}).status_code == 404
+    assert client.post(f"/api/cards/{future.id}/review", json={"correct": True}).status_code == 404
+    assert client.post(f"/api/cards/{active.id}/unretire").status_code == 404
+
+
+def test_overdue_right_schedules_from_today(client: TestClient, db: Session, deck: Deck, today: date):
+    card = add_card(db, deck, today - timedelta(days=10), stage=2)
+    body = client.post(f"/api/cards/{card.id}/review", json={"correct": True}).json()
+    assert (body["stage"], body["due_date"]) == (3, (today + timedelta(days=7)).isoformat())
+
+
+@pytest.mark.parametrize("path", ["review", "unretire"])
+def test_review_and_unretire_lock_the_card_row(client: TestClient, db: Session, deck: Deck, today: date, path):
+    # shortcut: pins the SELECT ... FOR UPDATE instead of racing two real connections (fixtures share one).
+    card = add_card(db, deck, today) if path == "review" else add_card(db, deck, None, stage=4, retired_at=datetime.now(UTC))
+    statements: list[str] = []
+
+    def record(conn, cursor, statement, *args):
+        statements.append(statement)
+
+    conn = db.connection()
+    event.listen(conn, "before_cursor_execute", record)
+    try:
+        assert client.post(f"/api/cards/{card.id}/{path}", json={"correct": True}).status_code == 200
+    finally:
+        event.remove(conn, "before_cursor_execute", record)
+    assert any("FOR UPDATE OF cards" in s for s in statements)
