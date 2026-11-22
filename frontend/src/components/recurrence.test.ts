@@ -1,7 +1,37 @@
-import { expect, test } from 'vitest'
-import { NO_RECURRENCE, buildRRule, parseRRule, recurrenceError, type RecurrenceState } from './recurrence'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { NO_RECURRENCE, buildRRule, parseRRule, recurrenceError, untilFromDate, type RecurrenceState } from './recurrence'
 
 const s = (patch: Partial<RecurrenceState>): RecurrenceState => ({ ...NO_RECURRENCE, ...patch })
+
+// UNTIL depends on the local zone; Node re-reads TZ when it changes. Default to UTC.
+beforeEach(() => {
+  vi.stubEnv('TZ', 'UTC')
+})
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
+
+test.each([
+  ['UTC', '20261231T235959Z'],
+  ['America/Los_Angeles', '20270101T075959Z'], // west of UTC: the local end of day is the next UTC day
+  ['Asia/Tokyo', '20261231T145959Z'],
+])('UNTIL is the end of the local day in %s', (tz, until) => {
+  vi.stubEnv('TZ', tz)
+  expect(untilFromDate('2026-12-31')).toBe(until)
+  const rule = `FREQ=DAILY;INTERVAL=1;UNTIL=${until}`
+  expect(buildRRule(s({ freq: 'DAILY', end: 'until', until: '2026-12-31' }))).toBe(rule)
+  expect(parseRRule(rule)?.until).toBe('2026-12-31')
+})
+
+test('an UNTIL that is not the end of a local day is shown read-only', () => {
+  vi.stubEnv('TZ', 'America/Los_Angeles')
+  expect(parseRRule('FREQ=DAILY;UNTIL=20261231T235959Z')).toBeNull()
+})
+
+test('UNTIL across a DST change uses that day’s offset', () => {
+  vi.stubEnv('TZ', 'America/Los_Angeles')
+  expect(untilFromDate('2026-07-04')).toBe('20260705T065959Z') // PDT, UTC-7
+})
 
 test.each([
   [s({ freq: 'DAILY' }), 'FREQ=DAILY;INTERVAL=1'],

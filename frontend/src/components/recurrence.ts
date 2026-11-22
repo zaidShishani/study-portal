@@ -1,3 +1,5 @@
+import dayjs from 'dayjs'
+
 // RRULE <-> builder state, limited to the subset the backend accepts (see app/services/rrule.py).
 
 export const FREQS = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const
@@ -27,12 +29,24 @@ export function recurrenceError(s: RecurrenceState): string {
   return ''
 }
 
+// End of the local day as RRULE UTC time: 2026-12-31 in UTC-8 -> 20270101T075959Z.
+export const untilFromDate = (date: string) =>
+  dayjs(date).endOf('day').toISOString().replace(/\.\d+Z$/, 'Z').replace(/[-:]/g, '')
+
+// The local date of an UNTIL instant, or null unless it is the end of a local day (i.e. builder-made).
+function dateFromUntil(until: string): string | null {
+  const m = until.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/)
+  if (!m) return null
+  const date = dayjs(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`).format('YYYY-MM-DD')
+  return untilFromDate(date) === until ? date : null
+}
+
 export function buildRRule(s: RecurrenceState): string | null {
   if (s.freq === 'NONE') return null
   const parts = [`FREQ=${s.freq}`, `INTERVAL=${s.interval}`]
   if (s.freq === 'WEEKLY' && s.byDay.length) parts.push(`BYDAY=${WEEKDAYS.filter((d) => s.byDay.includes(d)).join(',')}`)
-  // Whole end day, in UTC (the backend requires the Z form).
-  if (s.end === 'until') parts.push(`UNTIL=${s.until.replaceAll('-', '')}T235959Z`)
+  // The whole local end day; the backend requires UTC (Z form).
+  if (s.end === 'until') parts.push(`UNTIL=${untilFromDate(s.until)}`)
   if (s.end === 'count') parts.push(`COUNT=${s.count}`)
   return parts.join(';')
 }
@@ -51,7 +65,7 @@ export function parseRRule(rule: string | null): RecurrenceState | null {
   if (!FREQS.includes(FREQ as Freq) || !/^\d+$/.test(INTERVAL)) return null
   const byDay = BYDAY ? BYDAY.split(',') : []
   if (byDay.length && (FREQ !== 'WEEKLY' || !byDay.every((d) => WEEKDAYS.includes(d as Weekday)))) return null
-  const until = UNTIL?.match(/^(\d{4})(\d{2})(\d{2})T235959Z$/)
+  const until = UNTIL ? dateFromUntil(UNTIL) : null
   if (UNTIL && !until) return null
   if (COUNT && !/^\d+$/.test(COUNT)) return null
   const state: RecurrenceState = {
@@ -59,7 +73,7 @@ export function parseRRule(rule: string | null): RecurrenceState | null {
     freq: FREQ as Freq,
     interval: Number(INTERVAL),
     byDay: byDay as Weekday[],
-    ...(until && { end: 'until', until: `${until[1]}-${until[2]}-${until[3]}` }),
+    ...(until && { end: 'until', until }),
     ...(COUNT && { end: 'count', count: Number(COUNT) }),
   }
   return recurrenceError(state) ? null : state
