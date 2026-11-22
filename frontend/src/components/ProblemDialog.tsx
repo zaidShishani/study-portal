@@ -1,5 +1,15 @@
-import { useState, type FormEvent } from 'react'
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField } from '@mui/material'
+import { useRef, useState, type FormEvent } from 'react'
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormHelperText,
+  Stack,
+  TextField,
+} from '@mui/material'
 import MarkdownEditor from './MarkdownEditor'
 import { isHttpUrl } from '../api/problems'
 import { DIFFICULTIES, PATTERNS, type Difficulty, type Pattern, type Problem, type ProblemInput } from '../types'
@@ -7,11 +17,12 @@ import { DIFFICULTIES, PATTERNS, type Difficulty, type Pattern, type Problem, ty
 const MAX_TITLE = 255
 const MAX_LINK = 2048
 const MAX_MINUTES = 1440
+const MAX_TEXT = 10_000
 
 type Props = {
   problem?: Problem
   pending?: boolean
-  onSubmit: (input: ProblemInput) => void
+  onSubmit: (input: ProblemInput) => Promise<unknown>
   onClose: () => void
 }
 
@@ -25,6 +36,8 @@ export default function ProblemDialog({ problem, pending = false, onSubmit, onCl
   const [keyInsight, setKeyInsight] = useState(problem?.key_insight ?? '')
   const [notes, setNotes] = useState(problem?.notes ?? '')
   const [touched, setTouched] = useState(false)
+  // isPending arrives a render late; the ref blocks a second submit immediately.
+  const busy = useRef(false)
 
   const trimmedTitle = title.trim()
   const trimmedLink = link.trim()
@@ -38,14 +51,17 @@ export default function ProblemDialog({ problem, pending = false, onSubmit, onCl
       minutes.trim() && !(/^\d+$/.test(minutes.trim()) && Number(minutes) <= MAX_MINUTES)
         ? `Whole minutes, 0–${MAX_MINUTES}`
         : '',
+    keyInsight: keyInsight.length > MAX_TEXT ? 'Max 10,000 characters' : '',
+    notes: notes.length > MAX_TEXT ? 'Max 10,000 characters' : '',
   }
   const show = (field: keyof typeof errors) => ({ error: touched && !!errors[field], helperText: touched && errors[field] })
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setTouched(true)
-    if (Object.values(errors).some(Boolean) || pending || !difficulty || !pattern) return
-    onSubmit({
+    if (Object.values(errors).some(Boolean) || pending || busy.current || !difficulty || !pattern) return
+    busy.current = true
+    const input: ProblemInput = {
       title: trimmedTitle,
       link: trimmedLink || null,
       difficulty,
@@ -53,6 +69,9 @@ export default function ProblemDialog({ problem, pending = false, onSubmit, onCl
       minutes: minutes.trim() ? Number(minutes) : null,
       key_insight: keyInsight || null,
       notes: notes || null,
+    }
+    Promise.resolve(onSubmit(input)).finally(() => {
+      busy.current = false
     })
   }
 
@@ -102,8 +121,14 @@ export default function ProblemDialog({ problem, pending = false, onSubmit, onCl
                 {...show('minutes')}
               />
             </Stack>
-            <MarkdownEditor label="Key insight" value={keyInsight} onChange={setKeyInsight} minRows={2} />
-            <MarkdownEditor label="Notes" value={notes} onChange={setNotes} />
+            <Box>
+              <MarkdownEditor label="Key insight" value={keyInsight} onChange={setKeyInsight} minRows={2} />
+              {touched && errors.keyInsight && <FormHelperText error>{errors.keyInsight}</FormHelperText>}
+            </Box>
+            <Box>
+              <MarkdownEditor label="Notes" value={notes} onChange={setNotes} />
+              {touched && errors.notes && <FormHelperText error>{errors.notes}</FormHelperText>}
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions>

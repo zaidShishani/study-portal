@@ -64,9 +64,10 @@ export default function LeetCodePage() {
   }
 
   function save(input: ProblemInput) {
-    const opts = { onSuccess: () => setEditing(null), onError }
-    if (editing?.problem) updateProblem.mutate({ id: editing.problem.id, ...input }, opts)
-    else createProblem.mutate(input, opts)
+    const request = editing?.problem
+      ? updateProblem.mutateAsync({ id: editing.problem.id, ...input })
+      : createProblem.mutateAsync(input)
+    return request.then(() => setEditing(null), onError)
   }
 
   function confirmDelete() {

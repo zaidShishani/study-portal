@@ -1,10 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createProblem, deleteProblem, listProblems, updateProblem, type ProblemFilters } from '../api/problems'
 
 const KEY = ['problems']
 
 export const useProblems = (filters: ProblemFilters) =>
-  useQuery({ queryKey: [...KEY, filters], queryFn: () => listProblems(filters) })
+  // keepPreviousData: the table stays put while a new filter loads.
+  useQuery({ queryKey: [...KEY, filters], queryFn: () => listProblems(filters), placeholderData: keepPreviousData })
 
 function useProblemMutation<A, R>(mutationFn: (arg: A) => Promise<R>) {
   const queryClient = useQueryClient()

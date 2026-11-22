@@ -163,9 +163,13 @@ test('dialog validates fields and submits a trimmed problem', async () => {
 
   fireEvent.change(within(dialog).getByLabelText('Link'), { target: { value: 'javascript:alert(1)' } })
   fireEvent.change(within(dialog).getByLabelText('Minutes'), { target: { value: '1441' } })
+  fireEvent.change(within(dialog).getByLabelText('Key insight'), { target: { value: 'x'.repeat(10_001) } })
+  fireEvent.change(within(dialog).getByLabelText('Notes'), { target: { value: 'x'.repeat(10_001) } })
   fireEvent.click(save)
   expect(within(dialog).getByText('Enter an http(s) URL')).toBeTruthy()
   expect(within(dialog).getByText('Whole minutes, 0–1440')).toBeTruthy()
+  expect(within(dialog).getAllByText('Max 10,000 characters')).toHaveLength(2)
+  fireEvent.change(within(dialog).getByLabelText('Key insight'), { target: { value: '' } })
   expect(calls(fetchMock, 'POST')).toHaveLength(0)
 
   fillRequired(dialog, '  Two Sum  ')
@@ -184,6 +188,18 @@ test('dialog validates fields and submits a trimmed problem', async () => {
     notes: '# hash map',
   })
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+})
+
+test('two back-to-back Save clicks send one POST', async () => {
+  const fetchMock = mockApi([])
+  renderPage()
+  const dialog = await openNewDialog()
+  fillRequired(dialog)
+  const save = within(dialog).getByRole('button', { name: 'Save' })
+  fireEvent.click(save)
+  fireEvent.click(save)
+  expect(await screen.findByText('Two Sum')).toBeTruthy()
+  expect(calls(fetchMock, 'POST')).toHaveLength(1)
 })
 
 test('Save is disabled while a create is pending, so double-submit sends one POST', async () => {
