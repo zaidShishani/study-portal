@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_current_user, get_db
 from app.models.decks import Deck
 from app.models.users import User
+from app.schemas.common import Id
 from app.schemas.decks import DeckCreate, DeckOut, DeckUpdate
 
 router = APIRouter(prefix="/api/decks", tags=["decks"])
@@ -32,13 +33,13 @@ def create_deck(body: DeckCreate, user: User = Depends(get_current_user), db: Se
 
 
 @router.get("/{deck_id}", response_model=DeckOut)
-def get_deck(deck_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Deck:
+def get_deck(deck_id: Id, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Deck:
     return _own_deck(deck_id, user, db)
 
 
 @router.patch("/{deck_id}", response_model=DeckOut)
 def update_deck(
-    deck_id: int, body: DeckUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    deck_id: Id, body: DeckUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> Deck:
     deck = _own_deck(deck_id, user, db)
     deck.title = body.title
@@ -47,7 +48,7 @@ def update_deck(
 
 
 @router.delete("/{deck_id}", status_code=204)
-def delete_deck(deck_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
+def delete_deck(deck_id: Id, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
     db.delete(_own_deck(deck_id, user, db))
     db.commit()
     return Response(status_code=204)

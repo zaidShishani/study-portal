@@ -3,14 +3,16 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
-Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
+from app.schemas.common import InputModel, NoNul
+
+Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200), NoNul]
 
 
-class DeckCreate(BaseModel):
+class DeckCreate(InputModel):
     title: Title
 
 
-class DeckUpdate(BaseModel):
+class DeckUpdate(InputModel):
     title: Title
 
 

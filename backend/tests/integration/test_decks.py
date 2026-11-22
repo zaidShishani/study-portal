@@ -74,3 +74,25 @@ def test_other_users_decks_are_invisible(client: TestClient, db: Session, other_
     unchanged = db.get(Deck, deck.id)
     assert unchanged is not None
     assert (unchanged.user_id, unchanged.title) == (1, "User 1 deck")
+
+
+def test_out_of_range_id_is_422(client: TestClient):
+    big = 2_147_483_648
+    assert client.get(f"/api/decks/{big}").status_code == 422
+    assert client.patch(f"/api/decks/{big}", json={"title": "x"}).status_code == 422
+    assert client.delete(f"/api/decks/{big}").status_code == 422
+
+
+def test_nul_in_title_is_422(client: TestClient, db: Session):
+    assert client.post("/api/decks", json={"title": "a\x00b"}).status_code == 422
+    deck = make_deck(db)
+    assert client.patch(f"/api/decks/{deck.id}", json={"title": "a\x00b"}).status_code == 422
+
+
+def test_unknown_body_fields_are_422(client: TestClient, db: Session):
+    assert client.post("/api/decks", json={"title": "x", "user_id": 2}).status_code == 422
+    deck = make_deck(db)
+    assert client.patch(f"/api/decks/{deck.id}", json={"title": "x", "user_id": 2}).status_code == 422
+    db.expire_all()
+    unchanged = db.get(Deck, deck.id)
+    assert (unchanged.user_id, unchanged.title) == (1, "Mine")
