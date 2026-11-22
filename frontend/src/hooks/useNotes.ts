@@ -10,6 +10,7 @@ import {
   updateFolder,
   updatePage,
 } from '../api/notes'
+import type { NotePageItem } from '../types'
 
 const KEY = ['notes']
 
@@ -28,14 +29,28 @@ export const useAllPages = (folderIds: number[]) =>
 export const usePage = (id: number | null) =>
   useQuery({ queryKey: [...KEY, 'page', id], queryFn: () => getPage(id!), enabled: id !== null })
 
-function useNotesMutation<A, R>(mutationFn: (arg: A) => Promise<R>) {
+const FOLDERS = [...KEY, 'folders']
+const PAGES = [...KEY, 'pages']
+
+// Invalidate only what the mutation touched, so a save doesn't refetch every folder's page list.
+function useNotesMutation<A, R>(mutationFn: (arg: A) => Promise<R>, keys: (data: R | undefined, arg: A) => unknown[][]) {
   const queryClient = useQueryClient()
-  return useMutation({ mutationFn, onSettled: () => queryClient.invalidateQueries({ queryKey: KEY }) })
+  return useMutation({
+    mutationFn,
+    onSettled: (data, _err, arg) => Promise.all(keys(data, arg).map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+  })
 }
 
-export const useCreateFolder = () => useNotesMutation(createFolder)
-export const useUpdateFolder = () => useNotesMutation(updateFolder)
-export const useDeleteFolder = () => useNotesMutation(deleteFolder)
-export const useCreatePage = () => useNotesMutation(createPage)
-export const useUpdatePage = () => useNotesMutation(updatePage)
-export const useDeletePage = () => useNotesMutation(deletePage)
+// Folder deletes drop the subtree's page lists from the tree; root pages are untouched.
+export const useCreateFolder = () => useNotesMutation(createFolder, () => [FOLDERS])
+export const useUpdateFolder = () => useNotesMutation(updateFolder, () => [FOLDERS])
+export const useDeleteFolder = () => useNotesMutation(deleteFolder, () => [FOLDERS])
+export const useCreatePage = () => useNotesMutation(createPage, (p) => (p ? [[...PAGES, p.folder_id]] : []))
+// A move invalidates all page lists (the old folder isn't known here); a plain save only its own list.
+export const useUpdatePage = () =>
+  useNotesMutation(updatePage, (p, arg) => [
+    [...KEY, 'page', arg.id],
+    'folder_id' in arg || !p ? PAGES : [...PAGES, p.folder_id],
+  ])
+export const useDeletePage = () =>
+  useNotesMutation((p: NotePageItem) => deletePage(p.id), (_, p) => [[...PAGES, p.folder_id]])

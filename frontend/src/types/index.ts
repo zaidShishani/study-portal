@@ -73,7 +73,7 @@ export type NotePage = NotePageItem & {
   created_at: string
 }
 
-export type ProblemStatus ='due' | 'active' | 'retired' | 'all'
+export type ProblemStatus = 'due' | 'active' | 'retired' | 'all'
 
 export type LastResult = 'solved' | 'solved_with_hint' | 'failed'
 

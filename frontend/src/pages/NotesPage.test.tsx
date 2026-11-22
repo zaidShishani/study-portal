@@ -168,18 +168,45 @@ test('move a page to root sends folder_id: null', async () => {
   expect(lastBody(fetchMock, 'PATCH')).toEqual({ url: '/api/notes/pages/11', body: { folder_id: null } })
 })
 
-test('moving a folder into its descendant shows the API cycle error', async () => {
-  const fetchMock = mockApi(FOLDERS, [], { cycle: true })
+test('move picker hides the folder itself and its descendants', async () => {
+  mockApi([...FOLDERS, { id: 3, parent_id: null, name: 'Math' }], [])
   renderPage()
   fireEvent.click(await screen.findByText('Algorithms'))
   fireEvent.click(screen.getByRole('button', { name: 'Move' }))
+  fireEvent.mouseDown(within(screen.getByRole('dialog')).getByRole('combobox'))
+  const options = (await screen.findAllByRole('option')).map((o) => o.textContent)
+  expect(options).toEqual(['(Root)', 'Math'])
+})
+
+test('a cycle error from the API is shown and the move dialog stays open', async () => {
+  // e.g. another tab moved folders meanwhile, so the client-side filter didn't catch it.
+  const fetchMock = mockApi(FOLDERS, [], { cycle: true })
+  renderPage()
+  const folder = (await screen.findByText('Algorithms')).closest('[role="treeitem"]')!
+  await waitFor(() => expect(folder.getAttribute('aria-expanded')).toBe('false'))
+  fireEvent.click(screen.getByText('Algorithms'))
+  fireEvent.click(await screen.findByText('Graphs'))
+  fireEvent.click(screen.getByRole('button', { name: 'Move' }))
   const dialog = screen.getByRole('dialog')
   fireEvent.mouseDown(within(dialog).getByRole('combobox'))
-  fireEvent.click(await screen.findByRole('option', { name: 'Graphs' }))
+  fireEvent.click(await screen.findByRole('option', { name: '(Root)' }))
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
   expect(await screen.findByText('400 Cannot move a folder into itself or a descendant')).toBeTruthy()
-  expect(lastBody(fetchMock, 'PATCH')).toEqual({ url: '/api/notes/folders/1', body: { parent_id: 2 } })
+  expect(lastBody(fetchMock, 'PATCH')).toEqual({ url: '/api/notes/folders/2', body: { parent_id: null } })
   expect(screen.getByRole('dialog')).toBeTruthy()
+})
+
+test('deleting the folder holding the open page with unsaved edits warns about them', async () => {
+  mockApi([FOLDERS[0]], [mkPage(11, 'Dijkstra', 1, 'a')])
+  renderPage()
+  const folder = (await screen.findByText('Algorithms')).closest('[role="treeitem"]')!
+  await waitFor(() => expect(folder.getAttribute('aria-expanded')).toBe('false'))
+  fireEvent.click(screen.getByText('Algorithms'))
+  fireEvent.click(await screen.findByText('Dijkstra'))
+  fireEvent.change(await screen.findByLabelText('Content'), { target: { value: 'edited' } })
+  fireEvent.click(screen.getByText('Algorithms'))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+  expect(within(screen.getByRole('dialog')).getByText(/Unsaved changes to the open page will be lost/)).toBeTruthy()
 })
 
 test('editing a page shows unsaved state; Save PATCHes and clears it', async () => {
@@ -190,12 +217,20 @@ test('editing a page shows unsaved state; Save PATCHes and clears it', async () 
   expect(screen.getByText('All changes saved')).toBeTruthy()
   fireEvent.change(content, { target: { value: '# New' } })
   expect(screen.getByText('Unsaved changes')).toBeTruthy()
+  const before = fetchMock.mock.calls.length
   fireEvent.click(screen.getByRole('button', { name: 'Save' }))
   expect(await screen.findByText('All changes saved')).toBeTruthy()
   expect(lastBody(fetchMock, 'PATCH')).toEqual({
     url: '/api/notes/pages/10',
     body: { title: 'Root note', content: '# New' },
   })
+  // Only the page and its own folder's list refetch, not the folder list.
+  await waitFor(() => expect(fetchMock.mock.calls.length).toBe(before + 3))
+  expect(fetchMock.mock.calls.slice(before).map(([url]) => url).sort()).toEqual([
+    '/api/notes/pages',
+    '/api/notes/pages/10',
+    '/api/notes/pages/10',
+  ])
 })
 
 test('double-click Save sends one PATCH', async () => {

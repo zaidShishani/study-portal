@@ -110,16 +110,14 @@ export default function NotesPage() {
     return false
   }
 
+  const openFolder = allPages.pages.find((p) => p.id === openPageId)?.folder_id ?? null
+  const deletesOpenPage = selectedFolder ? isUnder(openFolder, selectedFolder.id) : selectedPage?.id === openPageId
+
   function confirmDelete() {
     setDeleteOpen(false)
-    if (selectedFolder) {
-      const openFolder = allPages.pages.find((p) => p.id === openPageId)?.folder_id ?? null
-      if (isUnder(openFolder, selectedFolder.id)) setOpenPageId(null)
-      deleteFolder.mutate(selectedFolder.id, { onError })
-    } else if (selectedPage) {
-      if (selectedPage.id === openPageId) setOpenPageId(null)
-      deletePage.mutate(selectedPage.id, { onError })
-    }
+    if (deletesOpenPage) setOpenPageId(null)
+    if (selectedFolder) deleteFolder.mutate(selectedFolder.id, { onError })
+    else if (selectedPage) deletePage.mutate(selectedPage, { onError })
     setSelected(null)
   }
 
@@ -159,7 +157,14 @@ export default function NotesPage() {
         <NoteDialog
           title={{ folder: 'New folder', page: 'New page', rename: 'Rename folder', move: `Move "${selectedName}"` }[dialog]}
           initialName={dialog === 'move' ? undefined : dialog === 'rename' ? selectedName : ''}
-          folders={dialog === 'rename' ? undefined : folderOptions}
+          folders={
+            dialog === 'rename'
+              ? undefined
+              : dialog === 'move' && selectedFolder
+                ? // A folder can't move into itself or a descendant; the API 400 stays as backstop.
+                  folderOptions.filter((o) => !isUnder(o.id, selectedFolder.id))
+                : folderOptions
+          }
           initialParent={dialog === 'move' ? (selectedFolder?.parent_id ?? selectedPage?.folder_id ?? null) : targetFolder}
           pending={createFolder.isPending || createPage.isPending || updateFolder.isPending || updatePage.isPending}
           onSubmit={submitDialog}
@@ -170,9 +175,10 @@ export default function NotesPage() {
         open={deleteOpen}
         title={selectedFolder ? 'Delete folder?' : 'Delete page?'}
         message={
-          selectedFolder
+          (selectedFolder
             ? `"${selectedName}" and all its subfolders and pages will be deleted.`
-            : `"${selectedName}" will be deleted.`
+            : `"${selectedName}" will be deleted.`) +
+          (deletesOpenPage && dirty ? ' Unsaved changes to the open page will be lost.' : '')
         }
         onConfirm={confirmDelete}
         onClose={() => setDeleteOpen(false)}
