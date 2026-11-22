@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -13,8 +13,6 @@ from app.services.calendar import calendar
 router = APIRouter(prefix="/api/calendar", tags=["calendar"])
 
 ISO_DATE = r"^\d{4}-\d{2}-\d{2}$"
-# Expansion walks from an event's start to the window; with start_at bounded too, this bounds the walk.
-MAX_DISTANCE = timedelta(days=3653)  # ~10 years
 
 
 def _parse(name: str, value: str) -> date:
@@ -38,6 +36,10 @@ def get_calendar(
     if (last - first).days + 1 > rrule.MAX_WINDOW.days:
         raise HTTPException(422, f"range must be at most {rrule.MAX_WINDOW.days} days")
     today = today_for(user)
-    if first < today - MAX_DISTANCE or last > today + MAX_DISTANCE:
+    # Coarse date check first so far-off dates can't overflow; the service checks the exact window.
+    if first < today - rrule.MAX_DISTANCE or last > today + rrule.MAX_DISTANCE:
         raise HTTPException(422, "dates must be within 10 years of today")
-    return calendar(db, user, first, last)
+    try:
+        return calendar(db, user, first, last)
+    except ValueError as e:
+        raise HTTPException(422, f"window {e}") from e

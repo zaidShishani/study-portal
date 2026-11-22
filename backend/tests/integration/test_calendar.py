@@ -195,11 +195,12 @@ def test_overdue_not_shown_in_past_window(client: TestClient, db: Session):
 
 def test_window_within_ten_years_of_today(client: TestClient, db: Session):
     today = today_for(db.get(User, 1))
-    for first, ok in ((today - timedelta(days=3653), True), (today - timedelta(days=3654), False)):
+    # The exact bound is 10 years from now (not today), so test a day inside and outside it.
+    for first, ok in ((today - timedelta(days=3651), True), (today - timedelta(days=3654), False)):
         assert client.get(URL, params={"from": first.isoformat(), "to": first.isoformat()}).status_code == (
             200 if ok else 422
         )
-    for last, ok in ((today + timedelta(days=3653), True), (today + timedelta(days=3654), False)):
+    for last, ok in ((today + timedelta(days=3651), True), (today + timedelta(days=3654), False)):
         assert client.get(URL, params={"from": last.isoformat(), "to": last.isoformat()}).status_code == (
             200 if ok else 422
         )

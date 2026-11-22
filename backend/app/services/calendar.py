@@ -19,10 +19,16 @@ MAX_ITEMS = 1000  # per derived list, like rrule.MAX_OCCURRENCES for events
 
 
 def calendar(db: Session, user: User, first: date, last: date) -> dict[str, Any]:
-    """Everything on the user's calendar for the inclusive local dates [first, last] (validated by the router)."""
+    """Everything on the user's calendar for the inclusive local dates [first, last].
+
+    Raises ValueError if the window is not within 10 years of now.
+    """
     tz = ZoneInfo(user.timezone)
     start = datetime.combine(first, time(), tz)
     end = datetime.combine(last + timedelta(days=1), time(), tz)
+    # Window errors raise here, so the per-event handler below only sees bad stored events.
+    rrule.check_near_now(start)
+    rrule.check_near_now(end)
 
     events: list[dict[str, Any]] = []
     invalid_event_ids: list[int] = []
