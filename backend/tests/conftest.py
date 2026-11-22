@@ -36,7 +36,11 @@ def engine() -> Iterator[Engine]:
 
 @pytest.fixture
 def db(engine: Engine) -> Iterator[Session]:
-    """Session inside an outer transaction that is rolled back after each test."""
+    """Session inside an outer transaction that is rolled back after each test.
+
+    Setup data that must survive a route-level db.rollback() should use db.commit():
+    it only releases the savepoint; the outer transaction still rolls back.
+    """
     with engine.connect() as conn:
         trans = conn.begin()
         session = Session(bind=conn, join_transaction_mode="create_savepoint")
@@ -57,6 +61,6 @@ def other_user(db: Session, client: TestClient) -> User:
     """A second user who becomes the current user, for ownership (404) tests."""
     user = User(email="other@example.com")
     db.add(user)
-    db.flush()
+    db.commit()
     app.dependency_overrides[get_current_user] = lambda: user
     return user

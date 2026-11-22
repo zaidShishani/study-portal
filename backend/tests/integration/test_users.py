@@ -1,4 +1,4 @@
-from sqlalchemy import func, inspect, select
+from sqlalchemy import Engine, func, inspect, select
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
@@ -34,13 +34,16 @@ def test_other_user_fixture_overrides_current_user(other_user: User):
     assert current.id != 1
 
 
-# The next two tests run in file order: the first writes, the second proves it was rolled back.
-def test_rollback_write(db: Session):
+def test_other_user_survives_route_level_rollback(db: Session, other_user: User):
+    db.add(User(email="dup@example.com"))
+    db.rollback()  # what a route does on IntegrityError
+    assert db.get(User, other_user.id) is not None
+
+
+def test_test_writes_never_reach_the_database(db: Session, engine: Engine):
     db.add(User(email=ROLLBACK_EMAIL))
     db.commit()  # commits only the savepoint; the outer transaction is still rolled back
-    assert db.scalar(select(func.count()).where(User.email == ROLLBACK_EMAIL)) == 1
-
-
-def test_rollback_leaves_no_data(db: Session):
-    assert db.scalar(select(func.count()).where(User.email == ROLLBACK_EMAIL)) == 0
-    assert db.scalar(select(func.count()).select_from(User)) == 1
+    count = select(func.count()).where(User.email == ROLLBACK_EMAIL)
+    assert db.scalar(count) == 1
+    with engine.connect() as outside:
+        assert outside.scalar(count) == 0
