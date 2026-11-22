@@ -22,6 +22,9 @@ import { useCards, useCreateCard, useDeleteCard, useUpdateCard } from '../hooks/
 import { useDeck } from '../hooks/useDecks'
 import type { Card, CardStatus } from '../types'
 
+// Crude markdown strip for button labels, so screen readers can tell cards apart.
+const excerpt = (md: string) => md.replace(/[#*_`>~[\]()!|-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40)
+
 export default function DeckPage() {
   const deckId = Number(useParams().deckId)
   const [status, setStatus] = useState<CardStatus>('active')
@@ -114,10 +117,10 @@ export default function DeckPage() {
                 Stage {card.stage} · {card.retired_at ? 'Retired' : `Due ${card.due_date}`}
               </Typography>
             </Box>
-            <IconButton aria-label="Edit card" onClick={() => setEditing({ card })}>
+            <IconButton aria-label={`Edit card: ${excerpt(card.front)}`} onClick={() => setEditing({ card })}>
               <EditIcon />
             </IconButton>
-            <IconButton aria-label="Delete card" onClick={() => setDeleting(card)}>
+            <IconButton aria-label={`Delete card: ${excerpt(card.front)}`} onClick={() => setDeleting(card)}>
               <DeleteIcon />
             </IconButton>
           </Paper>

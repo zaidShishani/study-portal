@@ -88,6 +88,9 @@ test('renders deck title and cards with markdown front, stage and due date', asy
   expect(await screen.findByRole('heading', { name: 'Biology' })).toBeTruthy()
   expect((await screen.findByText('What is ATP?')).tagName).toBe('STRONG')
   expect(screen.getByText('Stage 1 · Due 2026-11-23')).toBeTruthy()
+  // Button labels carry a plain-text excerpt of the front (markdown stripped, capped).
+  expect(screen.getByRole('button', { name: 'Edit card: What is ATP?' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Delete card: What is ATP?' })).toBeTruthy()
   fireEvent.click(screen.getByRole('link', { name: 'Start review (1 due)' }))
   expect(screen.getByRole('heading', { name: 'review' })).toBeTruthy()
 })
@@ -149,7 +152,7 @@ test('create dialog validates and submits', async () => {
 test('edit prefills front and back and PATCHes the card', async () => {
   const fetchMock = mockApi([card(1, 'old front')])
   renderPage()
-  fireEvent.click(await screen.findByRole('button', { name: 'Edit card' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit card: old front' }))
   const dialog = screen.getByRole('dialog')
   expect((within(dialog).getByLabelText('Front') as HTMLTextAreaElement).value).toBe('old front')
   expect((within(dialog).getByLabelText('Back') as HTMLTextAreaElement).value).toBe('back 1')
@@ -160,17 +163,18 @@ test('edit prefills front and back and PATCHes the card', async () => {
 })
 
 test('delete asks for confirmation before calling the API', async () => {
-  const fetchMock = mockApi([card(1, 'doomed')])
+  const fetchMock = mockApi([card(1, 'keeper'), card(2, 'doomed')])
   renderPage()
-  fireEvent.click(await screen.findByRole('button', { name: 'Delete card' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Delete card: doomed' }))
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   expect(calls(fetchMock, 'DELETE')).toHaveLength(0)
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete card' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete card: doomed' }))
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
   await waitFor(() => expect(screen.queryByText('doomed')).toBeNull())
-  expect(calls(fetchMock, 'DELETE')[0][0]).toBe('/api/cards/1')
+  expect(screen.getByText('keeper')).toBeTruthy()
+  expect(calls(fetchMock, 'DELETE')[0][0]).toBe('/api/cards/2')
 })
 
 test('unknown deck shows not found with a link back', async () => {
