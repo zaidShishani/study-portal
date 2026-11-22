@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_db
@@ -12,6 +12,8 @@ from app.schemas.events import EventCreate, EventOut, EventUpdate
 from app.services import rrule
 
 router = APIRouter(prefix="/api/events", tags=["events"])
+
+MAX_EVENTS = 500  # per user
 
 
 def get_own_event(event_id: int, user: User, db: Session) -> Event:
@@ -34,6 +36,10 @@ def _check(start_at: datetime, end_at: datetime | None, rule: str | None) -> Non
 @router.post("", response_model=EventOut, status_code=201)
 def create_event(body: EventCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Event:
     _check(body.start_at, body.end_at, body.rrule)
+    # Bounds calendar expansion per request (events x per-event cost).
+    # shortcut: count-then-insert, parallel creates can pass the cap by a few; lock if that matters.
+    if db.scalar(select(func.count()).where(Event.user_id == user.id)) >= MAX_EVENTS:
+        raise HTTPException(409, "Event limit reached")
     event = Event(user_id=user.id, **body.model_dump())
     db.add(event)
     db.commit()

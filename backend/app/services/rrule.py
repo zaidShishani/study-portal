@@ -1,8 +1,9 @@
+import re
 from datetime import UTC, datetime, timedelta
 from itertools import islice, takewhile
 from zoneinfo import ZoneInfo
 
-from dateutil.rrule import HOURLY, MINUTELY, SECONDLY, rrule, rrulestr
+from dateutil.rrule import rrule, rrulestr
 
 from app.models.events import Event
 
@@ -13,31 +14,52 @@ MAX_OCCURRENCES = 1000
 MIN_YEAR, MAX_YEAR = 1900, 2200
 
 
+# No whitespace or extra ":" (rrulestr would read DTSTART/TZID lines), only RRULE characters.
+_CHARS = re.compile(r"(RRULE:)?[A-Za-z0-9=;,+\-]+")
+# Only what the calendar UI emits. Every rule in this subset occurs within a few periods,
+# so expansion never scans for a match that doesn't exist (e.g. BYMONTHDAY=30 in February).
+_FREQS = {"DAILY", "WEEKLY", "MONTHLY", "YEARLY"}
+_KEYS = {"FREQ", "INTERVAL", "COUNT", "UNTIL", "BYDAY", "WKST"}
+_DAYS = {"MO", "TU", "WE", "TH", "FR", "SA", "SU"}
+
+
+def _in_range(value: str, high: int) -> bool:
+    return value.isdigit() and 1 <= int(value) <= high
+
+
 def validate(rule: str, dtstart: datetime) -> rrule:
-    """Parse one RRULE; raise ValueError if it is invalid or could expand unboundedly."""
+    """Parse one RRULE from the allowed subset; raise ValueError otherwise."""
     if dtstart.tzinfo is None:
         raise ValueError("dtstart must be timezone-aware")
     if len(rule) > MAX_LENGTH:
         raise ValueError(f"RRULE must be at most {MAX_LENGTH} characters")
-    if any(c.isspace() for c in rule):
-        # rrulestr splits on any whitespace, so "DTSTART:... RRULE:..." would override start_at.
-        raise ValueError("only a single RRULE without whitespace is allowed")
+    if not _CHARS.fullmatch(rule):
+        raise ValueError("RRULE contains characters that are not allowed")
+    parts = [p.partition("=") for p in rule.upper().removeprefix("RRULE:").split(";")]
+    params = {key: value for key, _, value in parts}
+    if len(params) != len(parts):
+        raise ValueError("duplicate RRULE parts are not allowed")
+    if not params.keys() <= _KEYS:
+        raise ValueError("only FREQ, INTERVAL, COUNT, UNTIL, BYDAY and WKST are allowed")
+    if params.get("FREQ") not in _FREQS:
+        raise ValueError("FREQ must be DAILY, WEEKLY, MONTHLY or YEARLY")
+    if "BYDAY" in params and (params["FREQ"] != "WEEKLY" or not set(params["BYDAY"].split(",")) <= _DAYS):
+        raise ValueError("BYDAY is only allowed with FREQ=WEEKLY, as plain days MO..SU")
+    if "INTERVAL" in params and not _in_range(params["INTERVAL"], 366):
+        raise ValueError("INTERVAL must be 1-366")
+    if "COUNT" in params and not _in_range(params["COUNT"], 1000):
+        raise ValueError("COUNT must be 1-1000")
+    if "UNTIL" in params and not params["UNTIL"].endswith("Z"):
+        raise ValueError("UNTIL must be in UTC (ending in Z)")
     try:
         parsed = rrulestr(rule, dtstart=dtstart)
     except Exception as e:  # the parser raises ValueError, IndexError, ... on bad input
         raise ValueError("invalid RRULE") from e
-    if not isinstance(parsed, rrule):  # EXRULE/RDATE/EXDATE parse to an rruleset
-        raise ValueError("only a single RRULE is allowed")
-    # dateutil has no public accessors for these.
-    if parsed._freq in (SECONDLY, MINUTELY, HOURLY):
-        raise ValueError("FREQ must be DAILY, WEEKLY, MONTHLY or YEARLY")
-    if parsed._original_rule.keys() & {"byhour", "byminute", "bysecond"}:
-        # They repeat an occurrence within a day, like the banned FREQs.
-        raise ValueError("BYHOUR, BYMINUTE and BYSECOND are not allowed")
-    if parsed._interval < 1:
-        raise ValueError("INTERVAL must be at least 1")  # INTERVAL=0 makes iteration loop forever
-    if parsed._count == 0 or (parsed._until is not None and parsed._until < dtstart):
-        raise ValueError("RRULE never occurs (COUNT=0 or UNTIL before start)")
+    # Backstop: the rule must not replace start_at. dateutil has no public accessors for these.
+    if not isinstance(parsed, rrule) or parsed._dtstart != dtstart:
+        raise ValueError("invalid RRULE")
+    if parsed._until is not None and parsed._until < dtstart:
+        raise ValueError("UNTIL must not be before start_at")
     return parsed
 
 

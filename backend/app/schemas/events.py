@@ -33,17 +33,18 @@ Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, ma
 Description = Annotated[str, Field(max_length=10_000), NoNul]
 # ISO strings with an offset only; naive times are a 422.
 Time = Annotated[AwareDatetime, BeforeValidator(_require_str), AfterValidator(_in_year_range)]
+# Content is checked by app.services.rrule.validate (it needs start_at).
+Rule = Annotated[str, Field(max_length=500), NoNul]
 Remind = Annotated[StrictInt, Field(ge=0, le=10_080)]  # up to one week
 
 
 class EventCreate(InputModel):
-    # rrule length and content are checked by app.services.rrule.validate (needs start_at).
     title: Title
     description: Description | None = None
     start_at: Time
     end_at: Time | None = None
     all_day: StrictBool = False
-    rrule: str | None = None
+    rrule: Rule | None = None
     remind_minutes_before: Remind | None = None
 
 
@@ -55,7 +56,7 @@ class EventUpdate(InputModel):
     start_at: Time | None = None
     end_at: Time | None = None
     all_day: StrictBool | None = None
-    rrule: str | None = None
+    rrule: Rule | None = None
     remind_minutes_before: Remind | None = None
 
 

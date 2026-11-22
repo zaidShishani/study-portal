@@ -1,5 +1,5 @@
+import time
 from datetime import UTC, datetime, timedelta, timezone
-
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -117,30 +117,55 @@ def test_occurrence_cap(monkeypatch: pytest.MonkeyPatch):
         "",
         "garbage",
         "FREQ=DAILY;BOGUS=1",
+        "FREQ=DAILY;;",
         "FREQ=WEEKLY;BYDAY=XX",
         "FREQ=DAILY;UNTIL=20260105",  # naive UNTIL with aware dtstart
+        "FREQ=DAILY;UNTIL=20260105T000000",
         "FREQ=SECONDLY",
         "FREQ=MINUTELY",
         "FREQ=HOURLY",
+        "INTERVAL=2",  # no FREQ
         "FREQ=DAILY;BYHOUR=9,10",
         "FREQ=DAILY;BYMINUTE=0,30",
         "FREQ=WEEKLY;BYSECOND=1",
         "FREQ=DAILY;INTERVAL=0",
+        "FREQ=DAILY;INTERVAL=367",
+        "FREQ=DAILY;INTERVAL=-1",
+        "FREQ=DAILY;COUNT=0",
+        "FREQ=DAILY;COUNT=1001",
+        "FREQ=DAILY;UNTIL=20251231T000000Z",  # before START
+        "FREQ=DAILY;COUNT=2;COUNT=3",  # duplicate key
+        "FREQ=DAILY;FREQ=WEEKLY",
         "FREQ=DAILY;DTSTART=20200101T000000Z",
         "DTSTART:20200101T000000Z",
+        "DTSTART;TZID=/etc/passwd:20200101T000000",
         "EXRULE:FREQ=DAILY",
         "RDATE:20260101T000000Z",
+        "rrule:FREQ=DAILY",
+        "RRULE:FREQ=DAILY:X",
         "RRULE:FREQ=DAILY\nEXRULE:FREQ=WEEKLY",
         "RRULE:FREQ=DAILY\r\nRRULE:FREQ=WEEKLY",
         # rrulestr splits on any whitespace; a DTSTART would override start_at.
         "DTSTART:20200101T000000Z RRULE:FREQ=DAILY",
         "DTSTART:20200101T000000Z\tRRULE:FREQ=DAILY",
+        "DTSTART:20200101T000000Z\vRRULE:FREQ=DAILY",
+        "DTSTART:20200101T000000Z　RRULE:FREQ=DAILY",
+        "DTSTART:20200101T000000Z\x1cRRULE:FREQ=DAILY",
         "DTSTART:20200101T000000 RRULE:FREQ=DAILY",  # naive
-        "DTSTART:20200101T000000\tRRULE:FREQ=DAILY",
         "FREQ=DAILY; COUNT=2",
-        "FREQ=DAILY;COUNT=0",
-        "FREQ=DAILY;UNTIL=20251231T000000Z",  # before START
-        "FREQ=DAILY;" + "BYMONTHDAY=1;" * 50,  # > 500 chars
+        # Rules that never (or rarely) match would scan to year 9999.
+        "FREQ=DAILY;BYSETPOS=-366",
+        "FREQ=DAILY;BYMONTH=2;BYMONTHDAY=30",
+        "FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=30",
+        "FREQ=MONTHLY;BYMONTHDAY=31",
+        "FREQ=YEARLY;BYYEARDAY=366",
+        "FREQ=YEARLY;BYWEEKNO=53",
+        "FREQ=YEARLY;BYEASTER=0",
+        "FREQ=DAILY;BYDAY=TU",  # BYDAY only with WEEKLY
+        "FREQ=MONTHLY;BYDAY=-1FR",
+        "FREQ=WEEKLY;BYDAY=1MO",
+        "FREQ=WEEKLY;BYDAY=+1MO",
+        "FREQ=DAILY;" + "WKST=MO;" * 70,  # > 500 chars
     ],
 )
 def test_invalid_rules_rejected(rule: str):
@@ -149,9 +174,30 @@ def test_invalid_rules_rejected(rule: str):
 
 
 def test_length_limit_boundary():
-    rule = "FREQ=DAILY;" + "WKST=MO;" * 60 + "COUNT=1"
-    assert len(rule) == 498
+    rule = "FREQ=WEEKLY;BYDAY=" + "MO," * 159 + "TU"
+    assert len(rule) == 497
     validate(rule, START)
+
+
+ACCEPTED = [
+    "FREQ=DAILY",
+    "FREQ=DAILY;INTERVAL=366",
+    "FREQ=WEEKLY;INTERVAL=7;BYDAY=TU",  # START is a Thursday
+    "FREQ=WEEKLY;INTERVAL=366;BYDAY=MO,SU;WKST=SU",
+    "FREQ=MONTHLY;INTERVAL=366",
+    "FREQ=YEARLY;INTERVAL=366",
+    "FREQ=DAILY;COUNT=1000",
+    "FREQ=DAILY;UNTIL=22001231T000000Z",
+]
+
+
+@pytest.mark.parametrize("rule", ACCEPTED)
+@pytest.mark.parametrize("dtstart", [START, datetime(2026, 1, 31, 9, tzinfo=UTC), datetime(2024, 2, 29, 9, tzinfo=UTC)])
+def test_accepted_rules_expand_fast(rule: str, dtstart: datetime):
+    e = ev(rule, start=dtstart)
+    began = time.perf_counter()
+    occ(e, dtstart, dtstart + timedelta(days=366), NY)
+    assert time.perf_counter() - began < 0.05
 
 
 def test_naive_dtstart_rejected():
