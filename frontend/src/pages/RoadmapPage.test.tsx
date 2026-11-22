@@ -144,6 +144,21 @@ test('new checkpoint dialog POSTs title, description and empty date', async () =
   expect(bodyOf(calls(fetchMock, 'POST')[0])).toEqual({ title: 'Ship it', description: 'a\nb', target_date: null })
 })
 
+test('a full roadmap (409) shows the error and keeps the dialog open', async () => {
+  const api = mockApi([])
+  vi.stubGlobal('fetch', async (url: string, init?: RequestInit) =>
+    init?.method === 'POST' ? Response.json({ detail: 'Roadmap is full' }, { status: 409 }) : api(url, init),
+  )
+  renderPage()
+  await screen.findByText('No checkpoints yet.')
+  fireEvent.click(screen.getByRole('button', { name: 'New checkpoint' }))
+  const dialog = screen.getByRole('dialog')
+  fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'One more' } })
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+  expect(await screen.findByText('409 Roadmap is full')).toBeTruthy()
+  expect(screen.getByRole('dialog')).toBeTruthy()
+})
+
 test('shows not-found for an unknown roadmap', async () => {
   mockApi([])
   renderPage('/roadmaps/42')
