@@ -37,7 +37,7 @@ def calendar(db: Session, user: User, first: date, last: date) -> dict[str, Any]
     )
     for event in rows:
         duration = event.end_at - event.start_at if event.end_at else None
-        starts = rrule.occurrences(event, start, end)
+        starts = rrule.occurrences(event, start, end, tz)
         truncated |= len(starts) == rrule.MAX_OCCURRENCES
         events += [
             {

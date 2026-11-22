@@ -1,4 +1,5 @@
 from datetime import UTC, date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -165,3 +166,16 @@ def test_window_validation(client: TestClient, params: dict):
 
 def test_full_year_allowed(client: TestClient):
     assert client.get(URL, params={"from": "2028-01-01", "to": "2028-12-31"}).status_code == 200  # 366 days
+
+
+def test_recurring_keeps_local_time_across_dst(client: TestClient, db: Session):
+    db.get(User, 1).timezone = "America/New_York"
+    # 09:00 EDT; DST ends 2026-11-01, after which 09:00 EST is 14:00 UTC.
+    db.add(Event(user_id=1, title="Class", start_at=datetime(2026, 10, 26, 13, tzinfo=UTC), rrule="FREQ=WEEKLY"))
+    db.flush()
+    body = get(client, date(2026, 10, 26), date(2026, 11, 9))
+    ny = ZoneInfo("America/New_York")
+    local = [datetime.fromisoformat(e["start"]).astimezone(ny) for e in body["events"]]
+    assert [(s.date(), s.hour) for s in local] == [
+        (date(2026, 10, 26), 9), (date(2026, 11, 2), 9), (date(2026, 11, 9), 9)
+    ]  # fmt: skip
