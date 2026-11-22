@@ -1,12 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy import func, select
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import Row, func, select
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_db
-from app.models.notes import NoteFolder
+from app.models.notes import NoteFolder, NotePage
 from app.models.users import User
 from app.schemas.common import Id
-from app.schemas.notes import FolderCreate, FolderOut, FolderUpdate
+from app.schemas.notes import (
+    FolderCreate,
+    FolderOut,
+    FolderUpdate,
+    PageCreate,
+    PageListItem,
+    PageOut,
+    PageUpdate,
+)
 
 router = APIRouter(prefix="/api/notes", tags=["notes"])
 
@@ -72,5 +82,74 @@ def update_folder(
 @router.delete("/folders/{folder_id}", status_code=204)
 def delete_folder(folder_id: Id, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
     db.delete(get_own_folder(folder_id, user, db))  # subtree goes via the FK's ON DELETE CASCADE
+    db.commit()
+    return Response(status_code=204)
+
+
+def get_own_page(page_id: int, user: User, db: Session) -> NotePage:
+    page = db.scalar(select(NotePage).where(NotePage.id == page_id, NotePage.user_id == user.id))
+    if page is None:
+        raise HTTPException(404, "Page not found")
+    return page
+
+
+@router.get("/pages", response_model=list[PageListItem])
+def list_pages(
+    folder_id: Annotated[int | None, Query(gt=0, le=2_147_483_647)] = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[Row[Any]]:
+    """Pages in one folder, or at root when folder_id is omitted."""
+    if folder_id is not None:
+        get_own_folder(folder_id, user, db)
+    # shortcut: unpaginated, fine for one folder's pages; paginate if lists get large.
+    # Only list columns are loaded, so page content isn't read for the list.
+    return list(
+        db.execute(
+            select(NotePage.id, NotePage.title, NotePage.folder_id, NotePage.updated_at)
+            .where(NotePage.user_id == user.id, NotePage.folder_id == folder_id)  # None -> IS NULL (root)
+            .order_by(NotePage.id)
+        )
+    )
+
+
+@router.post("/pages", response_model=PageOut, status_code=201)
+def create_page(body: PageCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> NotePage:
+    if body.folder_id is not None:
+        get_own_folder(body.folder_id, user, db)
+    page = NotePage(user_id=user.id, folder_id=body.folder_id, title=body.title, content=body.content)
+    db.add(page)
+    db.commit()
+    return page
+
+
+@router.get("/pages/{page_id}", response_model=PageOut)
+def get_page(page_id: Id, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> NotePage:
+    return get_own_page(page_id, user, db)
+
+
+@router.patch("/pages/{page_id}", response_model=PageOut)
+def update_page(
+    page_id: Id, body: PageUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+) -> NotePage:
+    page = get_own_page(page_id, user, db)
+    for field in ("title", "content"):
+        if field in body.model_fields_set and getattr(body, field) is None:
+            raise HTTPException(422, f"{field} must not be null")
+    if body.folder_id is not None:
+        get_own_folder(body.folder_id, user, db)
+    if body.title is not None:
+        page.title = body.title
+    if body.content is not None:
+        page.content = body.content
+    if "folder_id" in body.model_fields_set:
+        page.folder_id = body.folder_id
+    db.commit()
+    return page
+
+
+@router.delete("/pages/{page_id}", status_code=204)
+def delete_page(page_id: Id, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
+    db.delete(get_own_page(page_id, user, db))
     db.commit()
     return Response(status_code=204)
