@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Button, Divider, Paper, Snackbar, Stack, Typography } from '@mui/material'
+import { ApiError } from '../api/client'
 import MarkdownView from '../components/MarkdownView'
 import { useReviewCard, useReviewQueue } from '../hooks/useCards'
 
@@ -18,17 +19,23 @@ export default function ReviewPage() {
   const cards = queue.data ?? []
   const card = cards[index]
 
+  function next() {
+    setIndex((i) => i + 1)
+    setFlipped(false)
+  }
+
   function answer(correct: boolean) {
     if (!card || !flipped || busy.current) return
     busy.current = true
     review.mutate(
       { id: card.id, correct },
       {
-        onSuccess: () => {
-          setIndex((i) => i + 1)
-          setFlipped(false)
+        onSuccess: next,
+        onError: (err) => {
+          setMessage(err.message)
+          // 409 = already reviewed elsewhere; move on rather than get stuck on it.
+          if (err instanceof ApiError && err.status === 409) next()
         },
-        onError: (err) => setMessage(err.message),
         onSettled: () => {
           busy.current = false
         },
@@ -40,8 +47,9 @@ export default function ReviewPage() {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement
-      if (e.ctrlKey || e.metaKey || e.altKey || t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))
-        return
+      // Leave focused controls alone, e.g. Space must activate a focused button.
+      const native = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A']
+      if (e.ctrlKey || e.metaKey || e.altKey || t.isContentEditable || native.includes(t.tagName)) return
       if (e.key === ' ') {
         e.preventDefault()
         setFlipped(true)

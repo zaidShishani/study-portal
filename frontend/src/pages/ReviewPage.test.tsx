@@ -24,10 +24,11 @@ const card = (id: number, front: string, back: string): Card => ({
   updated_at: '2026-01-01T00:00:00Z',
 })
 
-function mockApi(queue: Card[]) {
+function mockApi(queue: Card[], conflictId?: number) {
   const fetchMock = vi.fn(async (url: string, init: RequestInit = {}) => {
     if ((init.method ?? 'GET') === 'GET') return Response.json(queue)
     const id = Number(url.split('/')[3])
+    if (id === conflictId) return Response.json({ detail: 'Card is not due' }, { status: 409 })
     return Response.json({ ...queue.find((c) => c.id === id), stage: 1 })
   })
   vi.stubGlobal('fetch', fetchMock)
@@ -113,6 +114,24 @@ test('shortcuts are ignored while typing in an input', async () => {
   fireEvent.keyDown(input, { key: ' ' })
   expect(screen.queryByText('A one')).toBeNull()
   input.remove()
+})
+
+test('shortcuts leave a focused button alone', async () => {
+  mockApi([card(1, 'Q one', 'A one')])
+  renderPage()
+  expect(await screen.findByText('Q one')).toBeTruthy()
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Show answer (Space)' }), { key: ' ' })
+  expect(screen.queryByText('A one')).toBeNull()
+})
+
+test('a 409 (already reviewed elsewhere) shows the error and advances', async () => {
+  mockApi([card(1, 'Q one', 'A one'), card(2, 'Q two', 'A two')], 1)
+  renderPage()
+  expect(await screen.findByText('Q one')).toBeTruthy()
+  fireEvent.keyDown(window, { key: ' ' })
+  fireEvent.keyDown(window, { key: '2' })
+  expect(await screen.findByText('Q two')).toBeTruthy()
+  expect(screen.getByText('409 Card is not due')).toBeTruthy()
 })
 
 test('empty queue shows "Nothing due" with a link back', async () => {

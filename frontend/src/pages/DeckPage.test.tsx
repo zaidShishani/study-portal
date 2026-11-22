@@ -212,6 +212,17 @@ test('un-retire moves a retired card back to the active list', async () => {
   expect(screen.getByText('Stage 1 · Due 2026-11-23')).toBeTruthy()
 })
 
+test('double-clicking Un-retire sends one POST', async () => {
+  const fetchMock = mockApi([card(1, 'old news', true)])
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: 'Retired' }))
+  const btn = await screen.findByRole('button', { name: 'Un-retire card: old news' })
+  fireEvent.click(btn)
+  fireEvent.click(btn)
+  await waitFor(() => expect(screen.queryByText('old news')).toBeNull())
+  expect(calls(fetchMock, 'POST')).toHaveLength(1)
+})
+
 test('unknown deck shows not found with a link back', async () => {
   mockApi([])
   renderPage('/flashcards/999')

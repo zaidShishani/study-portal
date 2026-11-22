@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   Box,
@@ -34,6 +34,8 @@ export default function DeckPage() {
   const updateCard = useUpdateCard()
   const deleteCard = useDeleteCard()
   const unretireCard = useUnretireCard()
+  // isPending lands a render late; the ref blocks a same-tick double click.
+  const unretiring = useRef(false)
   // null = closed; { card: undefined } = create; { card } = edit.
   const [editing, setEditing] = useState<{ card?: Card } | null>(null)
   const [deleting, setDeleting] = useState<Card | null>(null)
@@ -123,7 +125,16 @@ export default function DeckPage() {
               <Button
                 size="small"
                 aria-label={`Un-retire card: ${excerpt(card.front)}`}
-                onClick={() => unretireCard.mutate(card.id, { onError })}
+                onClick={() => {
+                  if (unretiring.current) return
+                  unretiring.current = true
+                  unretireCard.mutate(card.id, {
+                    onError,
+                    onSettled: () => {
+                      unretiring.current = false
+                    },
+                  })
+                }}
                 disabled={unretireCard.isPending}
               >
                 Un-retire
