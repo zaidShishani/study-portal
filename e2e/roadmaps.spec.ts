@@ -19,7 +19,9 @@ test('create roadmap, add 3 checkpoints, check one, reorder persists after reloa
   }
   await expect(page.getByText('0/3 · 0%')).toBeVisible()
 
-  await page.getByRole('checkbox', { name: 'Done: First' }).check()
+  // click, not check(): the box is controlled by server state, so it flips after the PATCH + refetch.
+  await page.getByRole('checkbox', { name: 'Done: First' }).click()
+  await expect(page.getByRole('checkbox', { name: 'Done: First' })).toBeChecked()
   await expect(page.getByText('1/3 · 33%')).toBeVisible()
 
   const items = page.getByRole('main').getByRole('listitem')
