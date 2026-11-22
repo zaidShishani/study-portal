@@ -71,7 +71,7 @@ def get_problem(problem_id: Id, user: User = Depends(get_current_user), db: Sess
 def update_problem(
     problem_id: Id, body: ProblemUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> Problem:
-    problem = get_own_problem(problem_id, user, db)
+    problem = get_own_problem(problem_id, user, db, for_update=True)
     for field, value in body.model_dump(mode="json", exclude_unset=True).items():
         setattr(problem, field, value)
     db.commit()

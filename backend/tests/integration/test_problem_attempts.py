@@ -110,6 +110,8 @@ def test_unretire(client: TestClient, db: Session, today: date):
         {"result": None},
         {"result": "solved", "minutes": -1},
         {"result": "solved", "minutes": 1441},
+        {"result": "solved", "minutes": True},
+        {"result": "solved", "minutes": "5"},
         {"result": "solved", "stage": 4},
         {"result": "solved", "today": "2099-01-01"},
         {"result": "solved", "correct": True},
@@ -142,10 +144,10 @@ def test_other_user_gets_404_not_409(client: TestClient, db: Session, today: dat
     assert (retired.stage, retired.retired_at is not None) == (4, True)
 
 
-@pytest.mark.parametrize("path", ["attempt", "unretire"])
-def test_attempt_and_unretire_lock_the_problem_row(client: TestClient, db: Session, today: date, path):
+@pytest.mark.parametrize("path", ["attempt", "unretire", "patch"])
+def test_writes_lock_the_problem_row(client: TestClient, db: Session, today: date, path):
     # shortcut: pins the SELECT ... FOR UPDATE instead of racing two real connections (fixtures share one).
-    p = add_problem(db, today) if path == "attempt" else retired_problem(db)
+    p = retired_problem(db) if path == "unretire" else add_problem(db, today)
     statements: list[str] = []
 
     def record(conn, cursor, statement, *args):
@@ -154,7 +156,11 @@ def test_attempt_and_unretire_lock_the_problem_row(client: TestClient, db: Sessi
     conn = db.connection()
     event.listen(conn, "before_cursor_execute", record)
     try:
-        assert client.post(f"/api/problems/{p.id}/{path}", json={"result": "solved"}).status_code == 200
+        if path == "patch":
+            r = client.patch(f"/api/problems/{p.id}", json={"notes": "n"})
+        else:
+            r = client.post(f"/api/problems/{p.id}/{path}", json={"result": "solved"})
+        assert r.status_code == 200
     finally:
         event.remove(conn, "before_cursor_execute", record)
     assert any("FOR UPDATE OF problems" in s for s in statements)

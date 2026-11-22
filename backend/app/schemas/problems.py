@@ -57,6 +57,8 @@ class ProblemUpdate(InputModel):
 
 # Only the outcome comes from the client; stage and today are always server-side.
 class AttemptIn(InputModel):
+    """`minutes: null` (or omitted) leaves minutes unchanged, unlike PATCH where null clears it."""
+
     result: LastResult
     minutes: Minutes | None = None
 
