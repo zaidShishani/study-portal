@@ -5,13 +5,15 @@ const MAX = 200
 
 type Props = {
   initialTitle?: string
+  // Also used for roadmaps, which share the same title-only create/rename form.
+  noun?: string
   pending?: boolean
   onSubmit: (title: string) => Promise<unknown>
   onClose: () => void
 }
 
 // Rendered only while open, so state resets from initialTitle each time.
-export default function DeckDialog({ initialTitle = '', pending = false, onSubmit, onClose }: Props) {
+export default function DeckDialog({ initialTitle = '', noun = 'deck', pending = false, onSubmit, onClose }: Props) {
   const [title, setTitle] = useState(initialTitle)
   const [touched, setTouched] = useState(false)
   const trimmed = title.trim()
@@ -32,7 +34,7 @@ export default function DeckDialog({ initialTitle = '', pending = false, onSubmi
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="xs">
       <form onSubmit={handleSubmit} noValidate>
-        <DialogTitle>{initialTitle ? 'Rename deck' : 'New deck'}</DialogTitle>
+        <DialogTitle>{initialTitle ? 'Rename' : 'New'} {noun}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
