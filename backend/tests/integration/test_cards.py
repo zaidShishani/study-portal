@@ -38,15 +38,32 @@ def test_create_card_is_new_and_due_today(client: TestClient, db: Session, deck:
     assert (body["review_count"], body["retired_at"], body["last_reviewed_at"]) == (0, None, None)
 
 
-def test_client_cannot_set_scheduling_fields(client: TestClient, deck: Deck):
-    sneaky = {"stage": 4, "due_date": "2099-01-01", "review_count": 9, "retired_at": "2020-01-01T00:00:00Z"}
-    body = client.post(f"/api/decks/{deck.id}/cards", json={"front": "Q", "back": "A", **sneaky}).json()
-    assert (body["stage"], body["review_count"], body["retired_at"]) == (0, 0, None)
-    assert body["due_date"] != "2099-01-01"
+@pytest.mark.parametrize(
+    "field",
+    [
+        {"stage": 4},
+        {"due_date": "2099-01-01"},
+        {"review_count": 9},
+        {"retired_at": "2020-01-01T00:00:00Z"},
+        {"deck_id": 1},
+    ],
+)
+def test_client_cannot_set_server_owned_fields(client: TestClient, db: Session, deck: Deck, field):
+    assert client.post(f"/api/decks/{deck.id}/cards", json={"front": "Q", "back": "A", **field}).status_code == 422
+    card = add_card(db, deck)
+    assert client.patch(f"/api/cards/{card.id}", json={"front": "Q2", **field}).status_code == 422
+    db.expire_all()
+    assert (card.front, card.stage, card.review_count, card.retired_at) == ("f", 0, 0, None)
+    assert db.scalar(select(func.count()).select_from(Card).where(Card.deck_id == deck.id)) == 1
 
-    patched = client.patch(f"/api/cards/{body['id']}", json={"front": "Q2", **sneaky}).json()
-    assert patched["front"] == "Q2"
-    assert {k: patched[k] for k in sneaky} == {k: body[k] for k in sneaky}
+
+def test_out_of_range_ids_are_422(client: TestClient):
+    big = 2_147_483_648
+    assert client.get(f"/api/decks/{big}/cards").status_code == 422
+    assert client.post(f"/api/decks/{big}/cards", json={"front": "f", "back": "b"}).status_code == 422
+    assert client.get(f"/api/cards/{big}").status_code == 422
+    assert client.patch(f"/api/cards/{big}", json={"front": "x"}).status_code == 422
+    assert client.delete(f"/api/cards/{big}").status_code == 422
 
 
 def test_get_patch_delete_card(client: TestClient, db: Session, deck: Deck):
@@ -61,7 +78,7 @@ def test_get_patch_delete_card(client: TestClient, db: Session, deck: Deck):
     assert client.get(f"/api/cards/{card.id}").status_code == 404
 
 
-@pytest.mark.parametrize("value", ["", "x" * 10_001, None])
+@pytest.mark.parametrize("value", ["", "x" * 10_001, "a\x00b", None])
 def test_invalid_front_back_is_422(client: TestClient, db: Session, deck: Deck, value):
     assert client.post(f"/api/decks/{deck.id}/cards", json={"front": value, "back": "b"}).status_code == 422
     assert client.post(f"/api/decks/{deck.id}/cards", json={"front": "f", "back": value}).status_code == 422

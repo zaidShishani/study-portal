@@ -11,6 +11,7 @@ from app.models.decks import Card, Deck
 from app.models.users import User
 from app.routers.decks import get_own_deck
 from app.schemas.cards import CardCreate, CardOut, CardUpdate
+from app.schemas.common import Id
 
 router = APIRouter(prefix="/api", tags=["cards"])
 
@@ -24,7 +25,7 @@ def _own_card(card_id: int, user: User, db: Session) -> Card:
 
 @router.get("/decks/{deck_id}/cards", response_model=list[CardOut])
 def list_cards(
-    deck_id: int,
+    deck_id: Id,
     status: Literal["active", "retired", "all"] = "active",
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -41,7 +42,7 @@ def list_cards(
 
 @router.post("/decks/{deck_id}/cards", response_model=CardOut, status_code=201)
 def create_card(
-    deck_id: int, body: CardCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    deck_id: Id, body: CardCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> Card:
     deck = get_own_deck(deck_id, user, db)
     stage, due_date = srs.new_item(today_for(user))
@@ -52,13 +53,13 @@ def create_card(
 
 
 @router.get("/cards/{card_id}", response_model=CardOut)
-def get_card(card_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Card:
+def get_card(card_id: Id, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Card:
     return _own_card(card_id, user, db)
 
 
 @router.patch("/cards/{card_id}", response_model=CardOut)
 def update_card(
-    card_id: int, body: CardUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)
+    card_id: Id, body: CardUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> Card:
     card = _own_card(card_id, user, db)
     if body.front is not None:
@@ -70,7 +71,7 @@ def update_card(
 
 
 @router.delete("/cards/{card_id}", status_code=204)
-def delete_card(card_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
+def delete_card(card_id: Id, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
     db.delete(_own_card(card_id, user, db))
     db.commit()
     return Response(status_code=204)
