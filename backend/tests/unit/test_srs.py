@@ -35,11 +35,12 @@ def test_full_walk_to_retirement():
     stage, due = new_item(TODAY)
     retired = False
     gaps = []
-    while not retired:
+    for _ in range(5):
         prev = due
         stage, due, retired = review(stage, True, due)
         if due:
             gaps.append((due - prev).days)
+    assert retired
     assert gaps == [1, 3, 7, 21]
     assert (stage, due) == (4, None)
 
@@ -48,7 +49,11 @@ def test_unretire():
     assert unretire(TODAY) == (1, days(1))
 
 
-@pytest.mark.parametrize("stage", [-1, 5])
+def test_due_date_crosses_year_boundary():
+    assert review(3, True, date(2026, 12, 20)) == (4, date(2027, 1, 10), False)
+
+
+@pytest.mark.parametrize("stage", [-1, 5, True, 2.0])
 def test_invalid_stage(stage):
     with pytest.raises(ValueError):
         review(stage, True, TODAY)

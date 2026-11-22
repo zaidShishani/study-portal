@@ -10,7 +10,7 @@ def new_item(today: date) -> tuple[int, date]:
 
 def review(stage: int, correct: bool, today: date) -> tuple[int, date | None, bool]:
     """Returns (stage, due_date, retired)."""
-    if not 0 <= stage <= MAX_STAGE:
+    if isinstance(stage, bool) or not isinstance(stage, int) or not 0 <= stage <= MAX_STAGE:
         raise ValueError(f"invalid stage {stage}")
     if not correct:
         return 1, today + timedelta(days=1), False
