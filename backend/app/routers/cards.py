@@ -16,8 +16,12 @@ from app.schemas.common import Id
 router = APIRouter(prefix="/api", tags=["cards"])
 
 
-def get_own_card(card_id: int, user: User, db: Session) -> Card:
-    card = db.scalar(select(Card).join(Deck).where(Card.id == card_id, Deck.user_id == user.id))
+def get_own_card(card_id: int, user: User, db: Session, for_update: bool = False) -> Card:
+    query = select(Card).join(Deck).where(Card.id == card_id, Deck.user_id == user.id)
+    if for_update:
+        # Row lock until commit; populate_existing re-reads the row after waiting on a concurrent writer.
+        query = query.with_for_update(of=Card).execution_options(populate_existing=True)
+    card = db.scalar(query)
     if card is None:
         raise HTTPException(404, "Card not found")
     return card

@@ -3,10 +3,10 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.schemas.common import InputModel, NoNul
+from app.schemas.common import InputModel, NoNul, NotBlank
 
 # Markdown: whitespace is kept as typed.
-Body = Annotated[str, Field(min_length=1, max_length=10_000), NoNul]
+Body = Annotated[str, Field(min_length=1, max_length=10_000), NoNul, NotBlank]
 
 
 # Scheduling fields (stage, due_date, review_count, retired_at) are server-owned; sending them is a 422.
