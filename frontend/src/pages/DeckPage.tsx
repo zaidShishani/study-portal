@@ -62,9 +62,10 @@ export default function DeckPage() {
   }
 
   function save(values: { front: string; back: string }) {
-    const opts = { onSuccess: () => setEditing(null), onError }
-    if (editing?.card) updateCard.mutate({ id: editing.card.id, ...values }, opts)
-    else createCard.mutate({ deckId, ...values }, opts)
+    const req = editing?.card
+      ? updateCard.mutateAsync({ id: editing.card.id, ...values })
+      : createCard.mutateAsync({ deckId, ...values })
+    return req.then(() => setEditing(null), onError)
   }
 
   function confirmDelete() {

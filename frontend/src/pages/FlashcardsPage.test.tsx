@@ -124,6 +124,19 @@ test('Save is disabled while a create is pending, so double-submit sends one POS
   expect(calls(fetchMock, 'POST')).toHaveLength(1)
 })
 
+test('back-to-back Save clicks create only one deck', async () => {
+  const fetchMock = mockApi([])
+  renderPage()
+  fireEvent.click(screen.getByRole('button', { name: 'New deck' }))
+  const dialog = screen.getByRole('dialog')
+  fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'Chemistry' } })
+  const save = within(dialog).getByRole('button', { name: 'Save' })
+  fireEvent.click(save)
+  fireEvent.click(save)
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(calls(fetchMock, 'POST')).toHaveLength(1)
+})
+
 test('rename prefills the title and PATCHes the deck', async () => {
   const fetchMock = mockApi([deck(1, 'Biology')])
   renderPage()
