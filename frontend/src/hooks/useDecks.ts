@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createDeck, deleteDeck, listDecks, renameDeck } from '../api/decks'
+import { createDeck, deleteDeck, getDeck, listDecks, renameDeck } from '../api/decks'
 
 const KEY = ['decks']
 
 export const useDecks = () => useQuery({ queryKey: KEY, queryFn: listDecks })
+
+// Under ['decks'] so any deck or card mutation refreshes it (title, due_count).
+export const useDeck = (id: number) => useQuery({ queryKey: [...KEY, id], queryFn: () => getDeck(id) })
 
 function useDeckMutation<A, R>(mutationFn: (arg: A) => Promise<R>) {
   const queryClient = useQueryClient()
