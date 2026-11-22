@@ -26,9 +26,11 @@ services:
     build: ./frontend
     ports:
       - "127.0.0.1:${WEB_PORT:-5173}:5173"
+    # Only source dirs are mounted: the image keeps its own node_modules, so Docker
+    # never creates a root-owned frontend/node_modules on the host. Config/deps changes need --build.
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
     depends_on:
       - backend
 
