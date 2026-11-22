@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.events import Event
 from app.models.users import User
+from app.routers import events as events_router
 
 URL = "/api/events"
 START = "2026-01-05T09:00:00Z"
@@ -172,3 +173,15 @@ def test_bad_ids(client: TestClient, event_id: str):
 
 def test_missing_id_is_404(client: TestClient):
     assert client.get(f"{URL}/2147483647").status_code == 404
+
+
+def test_event_limit_per_user(client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(events_router, "MAX_EVENTS", 2)
+    stranger = User(email="stranger@example.com")
+    db.add(stranger)
+    db.flush()
+    make_event(db, user_id=stranger.id)  # other users' events don't count
+    for _ in range(2):
+        assert client.post(URL, json={"title": "x", "start_at": START}).status_code == 201
+    r = client.post(URL, json={"title": "x", "start_at": START})
+    assert r.status_code == 409 and r.json()["detail"] == "Event limit reached"
