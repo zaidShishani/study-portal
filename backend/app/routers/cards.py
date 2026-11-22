@@ -16,8 +16,12 @@ from app.schemas.common import Id
 router = APIRouter(prefix="/api", tags=["cards"])
 
 
-def _own_card(card_id: int, user: User, db: Session) -> Card:
-    card = db.scalar(select(Card).join(Deck).where(Card.id == card_id, Deck.user_id == user.id))
+def get_own_card(card_id: int, user: User, db: Session, for_update: bool = False) -> Card:
+    query = select(Card).join(Deck).where(Card.id == card_id, Deck.user_id == user.id)
+    if for_update:
+        # Row lock until commit; populate_existing re-reads the row after waiting on a concurrent writer.
+        query = query.with_for_update(of=Card).execution_options(populate_existing=True)
+    card = db.scalar(query)
     if card is None:
         raise HTTPException(404, "Card not found")
     return card
@@ -54,14 +58,14 @@ def create_card(
 
 @router.get("/cards/{card_id}", response_model=CardOut)
 def get_card(card_id: Id, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Card:
-    return _own_card(card_id, user, db)
+    return get_own_card(card_id, user, db)
 
 
 @router.patch("/cards/{card_id}", response_model=CardOut)
 def update_card(
     card_id: Id, body: CardUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> Card:
-    card = _own_card(card_id, user, db)
+    card = get_own_card(card_id, user, db)
     if body.front is not None:
         card.front = body.front
     if body.back is not None:
@@ -72,6 +76,6 @@ def update_card(
 
 @router.delete("/cards/{card_id}", status_code=204)
 def delete_card(card_id: Id, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
-    db.delete(_own_card(card_id, user, db))
+    db.delete(get_own_card(card_id, user, db))
     db.commit()
     return Response(status_code=204)

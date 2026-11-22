@@ -16,6 +16,9 @@ Work is tracked as GitHub Issues (one per ticket, milestone per phase).
 ## Commands
 ```
 docker compose up --build                       # app: http://localhost:5173, API: http://localhost:8000/api
+#   only frontend/src and frontend/public hot-reload; after editing index.html, vite.config.ts,
+#   tsconfig*, or package*.json run `docker compose up -d --build`
+#   existing checkouts with a root-owned frontend/node_modules: one-time `sudo rm -rf frontend/node_modules`
 docker compose exec backend pytest              # backend unit + integration
 docker compose exec backend alembic revision --autogenerate -m "<msg>"
 cd frontend && npm run lint && npx tsc -b && npm test     # oxlint, type-check, vitest
