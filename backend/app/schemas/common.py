@@ -16,6 +16,16 @@ def _reject_nul(v: str) -> str:
 NoNul = AfterValidator(_reject_nul)
 
 
+def _reject_blank(v: str) -> str:
+    if not v.strip():
+        raise ValueError("must not be blank")
+    return v
+
+
+# Rejects whitespace-only input but keeps the text as typed (for markdown).
+NotBlank = AfterValidator(_reject_blank)
+
+
 class InputModel(BaseModel):
     """Base for request bodies: unknown fields (e.g. user_id) are rejected, not ignored."""
 
