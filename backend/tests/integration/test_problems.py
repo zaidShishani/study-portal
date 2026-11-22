@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -46,7 +46,8 @@ def test_create_problem_is_new_and_due_today(client: TestClient, db: Session):
     assert r.status_code == 201
     out = r.json()
     assert {k: out[k] for k in body} == body
-    assert (out["user_id"], out["stage"]) == (1, 0)
+    assert out["stage"] == 0
+    assert db.get(Problem, out["id"]).user_id == 1
     assert out["due_date"] == today_for(db.get(User, 1)).isoformat()
     assert (out["review_count"], out["retired_at"], out["last_result"], out["solved_date"]) == (0, None, None, None)
 
@@ -55,6 +56,22 @@ def test_create_minimal_problem(client: TestClient):
     r = client.post("/api/problems", json=VALID)
     assert r.status_code == 201
     assert (r.json()["link"], r.json()["minutes"], r.json()["notes"]) == (None, None, None)
+
+
+def test_due_and_create_follow_user_timezone(client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch):
+    # Pin "now" to 12:00 UTC on Mar 10: already Mar 11 in Kiritimati (UTC+14).
+    now = datetime(2026, 3, 10, 12, 0, tzinfo=UTC)
+    monkeypatch.setattr("app.routers.problems.today_for", lambda user: today_for(user, now=now))
+    p = add_problem(db, due_date=date(2026, 3, 11))
+
+    assert ids(client.get("/api/problems?status=due")) == []
+    created = client.post("/api/problems", json=VALID).json()
+    assert created["due_date"] == "2026-03-10"
+    assert ids(client.get("/api/problems?status=due")) == [created["id"]]
+
+    assert client.patch("/api/me", json={"timezone": "Pacific/Kiritimati"}).status_code == 200
+    assert ids(client.get("/api/problems?status=due")) == [p.id, created["id"]]
+    assert client.post("/api/problems", json=VALID).json()["due_date"] == "2026-03-11"
 
 
 def test_get_patch_delete_problem(client: TestClient, db: Session):
@@ -136,6 +153,8 @@ def test_bad_filter_is_422(client: TestClient, query):
         {"notes": "a" * 10_001},
         {"minutes": -1},
         {"minutes": 1441},
+        {"minutes": True},
+        {"minutes": "5"},
     ],
 )
 def test_invalid_input_is_422(client: TestClient, db: Session, override):
@@ -202,7 +221,7 @@ def test_other_user_gets_404_and_is_excluded_from_list(client: TestClient, db: S
     assert ids(client.get("/api/problems?status=all")) == [mine.id]
 
     created = client.post("/api/problems", json=VALID).json()
-    assert created["user_id"] == other_user.id
+    assert db.get(Problem, created["id"]).user_id == other_user.id
 
     db.expire_all()
     assert db.get(Problem, p.id).title == "p"

@@ -54,6 +54,7 @@ unretire -> stage = 1, due = today + 1, retired_at = NULL
 ```
 - Overdue items stay due (due_date <= today) until reviewed. Intervals count from the actual review day. No randomness.
 - Retired items are hidden from review queues but listable with a "retired" filter.
+- Problem attempts are allowed before the due date and advance the ladder (user decision); card reviews 409 when not due.
 
 ## Data model
 | table | columns |

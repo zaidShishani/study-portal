@@ -11,13 +11,13 @@ down_revision = "0003"
 branch_labels = None
 depends_on = None
 
-DIFFICULTY = sa.Enum("Easy", "Medium", "Hard", name="difficulty")
-LAST_RESULT = sa.Enum("solved", "solved_with_hint", "failed", name="last_result")
+DIFFICULTY = sa.Enum("Easy", "Medium", "Hard", name="problem_difficulty")
+LAST_RESULT = sa.Enum("solved", "solved_with_hint", "failed", name="problem_last_result")
 PATTERN = sa.Enum(
     "Two Pointers", "Sliding Window", "Binary Search", "Stack", "Linked List", "Tree", "Trie",
     "Heap", "Graph", "BFS", "DFS", "Backtracking", "DP", "Greedy", "Intervals", "Union Find",
     "Bit Manipulation", "Math",
-    name="pattern",
+    name="problem_pattern",
 )
 
 
