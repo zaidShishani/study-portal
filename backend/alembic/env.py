@@ -1,3 +1,5 @@
+from logging.config import fileConfig
+
 from alembic import context
 from sqlalchemy import create_engine
 
@@ -17,5 +19,6 @@ connection = context.config.attributes.get("connection")
 if connection is not None:
     run(connection)
 else:
+    fileConfig(context.config.config_file_name)
     with create_engine(settings.database_url).connect() as conn:
         run(conn)
