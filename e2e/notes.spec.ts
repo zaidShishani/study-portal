@@ -1,0 +1,44 @@
+import { expect, test, type Page } from '@playwright/test'
+
+async function create(page: Page, button: string, name: string) {
+  await page.getByRole('button', { name: button }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Name').fill(name)
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  await expect(dialog).toBeHidden()
+}
+
+// Only items with children expand, so wait for a folder's contents to load before clicking it.
+async function expandFolder(page: Page, name: string) {
+  const item = page.getByRole('treeitem', { name })
+  await expect(item).toHaveAttribute('aria-expanded', 'false')
+  await item.getByText(name, { exact: true }).click()
+  await expect(item).toHaveAttribute('aria-expanded', 'true')
+}
+
+test('create folder, subfolder and page; saved markdown persists across reload', async ({ page }) => {
+  const stamp = Date.now()
+  const folder = `E2E folder ${stamp}`
+  const sub = `E2E sub ${stamp}`
+  const title = `E2E page ${stamp}`
+  await page.goto('/notes')
+
+  // A new folder is selected after creation, so the next item goes inside it.
+  await create(page, 'New folder', folder)
+  await create(page, 'New folder', sub)
+  await create(page, 'New page', title)
+
+  await expect(page.getByLabel('Title')).toHaveValue(title)
+  await page.getByLabel('Content').fill('# Heading\n\nSome **bold** text')
+  await expect(page.getByText('Unsaved changes')).toBeVisible()
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('All changes saved')).toBeVisible()
+
+  await page.reload()
+  await expandFolder(page, folder)
+  await expandFolder(page, sub)
+  await page.getByRole('treeitem', { name: title }).click()
+  await expect(page.getByLabel('Content')).toHaveValue('# Heading\n\nSome **bold** text')
+  await page.getByRole('tab', { name: 'Preview' }).click()
+  await expect(page.getByRole('heading', { name: 'Heading' })).toBeVisible()
+})
