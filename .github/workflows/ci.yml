@@ -74,7 +74,8 @@ jobs:
           for url in http://localhost:5173 http://localhost:8000/api/health; do
             timeout 120 sh -c "until curl -sf $url > /dev/null; do sleep 2; done"
           done
-      - working-directory: e2e
+      - name: Playwright
+        working-directory: e2e
         run: |
           npm ci
           npx playwright install --with-deps chromium
