@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import me
+from app.routers import decks, me
 
 app = FastAPI(title="Study Portal")
 app.add_middleware(
@@ -19,3 +19,4 @@ def health() -> dict[str, str]:
 
 
 app.include_router(me.router)
+app.include_router(decks.router)
