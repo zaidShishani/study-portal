@@ -154,6 +154,20 @@ test('create dialog validates and submits', async () => {
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 })
 
+test('double-clicking Save creates only one card', async () => {
+  const fetchMock = mockApi([])
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: 'New card' }))
+  const dialog = screen.getByRole('dialog')
+  fireEvent.change(within(dialog).getByLabelText('Front'), { target: { value: 'q' } })
+  fireEvent.change(within(dialog).getByLabelText('Back'), { target: { value: 'a' } })
+  const save = within(dialog).getByRole('button', { name: 'Save' })
+  fireEvent.click(save)
+  fireEvent.click(save)
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(calls(fetchMock, 'POST')).toHaveLength(1)
+})
+
 test('edit prefills front and back and PATCHes the card', async () => {
   const fetchMock = mockApi([card(1, 'old front')])
   renderPage()

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, FormHelperText, Stack } from '@mui/material'
 import MarkdownEditor from './MarkdownEditor'
 
@@ -7,7 +7,7 @@ const MAX = 10_000
 type Props = {
   initial?: { front: string; back: string }
   pending?: boolean
-  onSubmit: (values: { front: string; back: string }) => void
+  onSubmit: (values: { front: string; back: string }) => Promise<unknown>
   onClose: () => void
 }
 
@@ -19,12 +19,18 @@ export default function CardDialog({ initial, pending = false, onSubmit, onClose
   const [back, setBack] = useState(initial?.back ?? '')
   const [touched, setTouched] = useState(false)
   const errors = { front: validate(front), back: validate(back) }
+  // isPending lands a render late; the ref blocks a same-tick double click.
+  const busy = useRef(false)
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setTouched(true)
     // Markdown is sent as typed; whitespace can be meaningful.
-    if (!errors.front && !errors.back && !pending) onSubmit({ front, back })
+    if (errors.front || errors.back || busy.current) return
+    busy.current = true
+    Promise.resolve(onSubmit({ front, back })).finally(() => {
+      busy.current = false
+    })
   }
 
   return (
