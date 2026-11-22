@@ -10,7 +10,7 @@ Work is tracked as GitHub Issues (one per ticket, milestone per phase).
 4. Implement **only** that issue's scope. If something is unclear, ask the user; do not assume product behavior.
 5. Write the tests the issue requires (unit / integration / e2e) and run them locally.
 6. Open a PR whose body contains `Closes #<number>` and fill in the PR checklist.
-7. Merge (squash) only when CI is green. The merge closes the issue.
+7. Merge with a merge commit (not squash — PRs are often stacked on each other) only when CI is green and the QA + security reviews pass. The merge closes the issue.
 8. If the issue is wrong or too big, comment on it and split it — don't silently widen scope.
 
 ## Commands
