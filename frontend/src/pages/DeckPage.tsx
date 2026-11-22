@@ -127,7 +127,14 @@ export default function DeckPage() {
         ))}
       </Stack>
 
-      {editing && <CardDialog initial={editing.card} onSubmit={save} onClose={() => setEditing(null)} />}
+      {editing && (
+        <CardDialog
+          initial={editing.card}
+          pending={createCard.isPending || updateCard.isPending}
+          onSubmit={save}
+          onClose={() => setEditing(null)}
+        />
+      )}
       <ConfirmDialog
         open={!!deleting}
         title="Delete card?"
