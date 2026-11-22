@@ -153,6 +153,16 @@ test('retired problem shows Retired and can be un-retired', async () => {
   expect(posts(fetchMock, '/unretire')[0][0]).toBe('/api/problems/7/unretire')
 })
 
+test('double-clicking Un-retire sends one POST', async () => {
+  const fetchMock = mockApi({ ...base, stage: 4, due_date: null, retired_at: '2026-11-22T00:00:00Z' })
+  renderPage()
+  const button = await screen.findByRole('button', { name: 'Un-retire' })
+  fireEvent.click(button)
+  fireEvent.click(button)
+  expect(await screen.findByRole('button', { name: 'Log attempt' })).toBeTruthy()
+  expect(posts(fetchMock, '/unretire')).toHaveLength(1)
+})
+
 test('unknown problem shows not found', async () => {
   mockApi(null)
   renderPage()
@@ -180,4 +190,6 @@ test('delete asks for confirmation then returns to the list', async () => {
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
   expect(await screen.findByRole('heading', { name: 'problem list' })).toBeTruthy()
   expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true)
+  // The deleted detail is not refetched.
+  expect(fetchMock.mock.calls.filter(([, init]) => !init?.method)).toHaveLength(1)
 })

@@ -46,3 +46,11 @@ test('links open in a new tab with safe rel', () => {
   expect(link.getAttribute('target')).toBe('_blank')
   expect(link.getAttribute('rel')).toBe('noopener noreferrer')
 })
+
+test('markdown headings are shifted below the page headings', () => {
+  render(<MarkdownView>{'# Top\n\n## Sub\n\n###### Deep'}</MarkdownView>)
+  expect(screen.getByRole('heading', { name: 'Top' }).tagName).toBe('H3')
+  expect(screen.getByRole('heading', { name: 'Sub' }).tagName).toBe('H4')
+  expect(screen.getByRole('heading', { name: 'Deep' }).tagName).toBe('H6')
+  expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
+})

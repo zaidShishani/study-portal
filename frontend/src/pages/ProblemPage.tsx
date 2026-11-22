@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import { Box, Button, Chip, Link, Snackbar, Stack, Typography } from '@mui/material'
 import AttemptDialog from '../components/AttemptDialog'
@@ -26,6 +26,8 @@ export default function ProblemPage() {
   const deleteProblem = useDeleteProblem()
   const attemptProblem = useAttemptProblem()
   const unretireProblem = useUnretireProblem()
+  // isPending lands a render late; the ref blocks a same-tick double click.
+  const unretiring = useRef(false)
   const [editing, setEditing] = useState(false)
   const [attempting, setAttempting] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -98,7 +100,16 @@ export default function ProblemPage() {
             <Button
               variant="contained"
               disabled={unretireProblem.isPending}
-              onClick={() => unretireProblem.mutate(p.id, { onError })}
+              onClick={() => {
+                if (unretiring.current) return
+                unretiring.current = true
+                unretireProblem.mutate(p.id, {
+                  onError,
+                  onSettled: () => {
+                    unretiring.current = false
+                  },
+                })
+              }}
             >
               Un-retire
             </Button>

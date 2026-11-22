@@ -28,6 +28,14 @@ function useProblemMutation<A, R>(mutationFn: (arg: A) => Promise<R>) {
 
 export const useCreateProblem = () => useProblemMutation(createProblem)
 export const useUpdateProblem = () => useProblemMutation(updateProblem)
-export const useDeleteProblem = () => useProblemMutation(deleteProblem)
+export function useDeleteProblem() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteProblem,
+    // Drop the deleted detail first so onSettled doesn't refetch it into a 404.
+    onSuccess: (_, id) => queryClient.removeQueries({ queryKey: [...KEY, 'detail', String(id)] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: KEY }),
+  })
+}
 export const useAttemptProblem = () => useProblemMutation(attemptProblem)
 export const useUnretireProblem = () => useProblemMutation(unretireProblem)
