@@ -2,7 +2,8 @@ from zoneinfo import available_timezones
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-TIMEZONES = available_timezones()
+# tzdata ships these non-IANA keys; they are not real user timezones
+TIMEZONES = available_timezones() - {"localtime", "Factory"}
 
 
 class MeOut(BaseModel):
@@ -14,6 +15,8 @@ class MeOut(BaseModel):
 
 
 class MeUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     timezone: str = Field(max_length=64)
 
     @field_validator("timezone")
