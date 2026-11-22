@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material'
 
 const MAX = 200
@@ -6,7 +6,7 @@ const MAX = 200
 type Props = {
   initialTitle?: string
   pending?: boolean
-  onSubmit: (title: string) => void
+  onSubmit: (title: string) => Promise<unknown>
   onClose: () => void
 }
 
@@ -15,12 +15,18 @@ export default function DeckDialog({ initialTitle = '', pending = false, onSubmi
   const [title, setTitle] = useState(initialTitle)
   const [touched, setTouched] = useState(false)
   const trimmed = title.trim()
+  // isPending lands a render late; the ref blocks a same-tick double click.
+  const busy = useRef(false)
   const error = !trimmed ? 'Title is required' : trimmed.length > MAX ? `Max ${MAX} characters` : ''
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setTouched(true)
-    if (!error && !pending) onSubmit(trimmed)
+    if (error || busy.current) return
+    busy.current = true
+    Promise.resolve(onSubmit(trimmed)).finally(() => {
+      busy.current = false
+    })
   }
 
   return (

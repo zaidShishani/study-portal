@@ -13,6 +13,22 @@ export type Deck = {
   updated_at: string
 }
 
+export type CardStatus = 'active' | 'retired' | 'all'
+
+export type Card = {
+  id: number
+  deck_id: number
+  front: string
+  back: string
+  stage: number
+  due_date: string | null
+  review_count: number
+  last_reviewed_at: string | null
+  retired_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Enum values exactly as the API (docs/ARCHITECTURE.md → Enums).
 export const DIFFICULTIES = ['Easy', 'Medium', 'Hard'] as const
 export type Difficulty = (typeof DIFFICULTIES)[number]

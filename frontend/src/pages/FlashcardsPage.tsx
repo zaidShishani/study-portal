@@ -41,9 +41,8 @@ export default function FlashcardsPage() {
   }
 
   function save(title: string) {
-    const opts = { onSuccess: () => setEditing(null), onError }
-    if (editing?.deck) renameDeck.mutate({ id: editing.deck.id, title }, opts)
-    else createDeck.mutate(title, opts)
+    const req = editing?.deck ? renameDeck.mutateAsync({ id: editing.deck.id, title }) : createDeck.mutateAsync(title)
+    return req.then(() => setEditing(null), onError)
   }
 
   function confirmDelete() {
