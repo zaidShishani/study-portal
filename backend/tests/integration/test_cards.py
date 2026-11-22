@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -78,7 +78,7 @@ def test_get_patch_delete_card(client: TestClient, db: Session, deck: Deck):
     assert client.get(f"/api/cards/{card.id}").status_code == 404
 
 
-@pytest.mark.parametrize("value", ["", "x" * 10_001, "a\x00b", None])
+@pytest.mark.parametrize("value", ["", "   ", "x" * 10_001, "a\x00b", None])
 def test_invalid_front_back_is_422(client: TestClient, db: Session, deck: Deck, value):
     assert client.post(f"/api/decks/{deck.id}/cards", json={"front": value, "back": "b"}).status_code == 422
     assert client.post(f"/api/decks/{deck.id}/cards", json={"front": "f", "back": value}).status_code == 422
@@ -124,6 +124,19 @@ def test_deck_counts(client: TestClient, db: Session, deck: Deck):
     assert (got["card_count"], got["due_count"]) == (4, 2)
     patched = client.patch(f"/api/decks/{deck.id}", json={"title": "Renamed"}).json()
     assert (patched["card_count"], patched["due_count"]) == (4, 2)
+
+
+def test_due_count_follows_user_timezone(
+    client: TestClient, db: Session, deck: Deck, monkeypatch: pytest.MonkeyPatch
+):
+    # Pin "now" to 22:00 UTC on Mar 10: still Mar 10 in UTC, already Mar 11 in Tokyo (UTC+9, no DST).
+    now = datetime(2026, 3, 10, 22, 0, tzinfo=UTC)
+    monkeypatch.setattr("app.routers.decks.today_for", lambda user: today_for(user, now=now))
+    add_card(db, deck, due_date=date(2026, 3, 11))
+
+    assert client.get(f"/api/decks/{deck.id}").json()["due_count"] == 0
+    assert client.patch("/api/me", json={"timezone": "Asia/Tokyo"}).status_code == 200
+    assert client.get(f"/api/decks/{deck.id}").json()["due_count"] == 1
 
 
 def test_deleting_deck_deletes_its_cards(client: TestClient, db: Session, deck: Deck):

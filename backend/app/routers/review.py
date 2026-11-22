@@ -46,7 +46,7 @@ def due_cards(
 def review_card(
     card_id: Id, body: ReviewIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ) -> Card:
-    card = get_own_card(card_id, user, db)
+    card = get_own_card(card_id, user, db, for_update=True)
     today = today_for(user)
     if card.retired_at is not None:
         raise HTTPException(409, "Card is retired")
@@ -64,7 +64,7 @@ def review_card(
 
 @router.post("/cards/{card_id}/unretire", response_model=CardOut)
 def unretire_card(card_id: Id, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Card:
-    card = get_own_card(card_id, user, db)
+    card = get_own_card(card_id, user, db, for_update=True)
     if card.retired_at is None:
         raise HTTPException(409, "Card is not retired")
     card.stage, card.due_date = srs.unretire(today_for(user))
