@@ -7,11 +7,12 @@ export const useCards = (deckId: number, status: CardStatus) =>
   useQuery({ queryKey: ['cards', deckId, status], queryFn: () => listCards(deckId, status) })
 
 // Card changes also move the deck's card/due counts, so refresh decks too.
+// onSettled (like useDecks): a failed call (e.g. 404 after another tab deleted it) also resyncs.
 function useCardMutation<A, R>(mutationFn: (arg: A) => Promise<R>) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn,
-    onSuccess: () =>
+    onSettled: () =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ['cards'] }),
         queryClient.invalidateQueries({ queryKey: ['decks'] }),

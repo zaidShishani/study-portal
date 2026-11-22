@@ -20,11 +20,19 @@ def test_patch_me_updates_and_persists_timezone(client: TestClient, db: Session)
     assert client.get("/api/me").json()["timezone"] == "Asia/Amman"
 
 
-@pytest.mark.parametrize("tz", ["Mars/Olympus", "", "x" * 65, "UTC ", None])
+@pytest.mark.parametrize("tz", ["Mars/Olympus", "", "x" * 65, "UTC ", None, "localtime", "Factory"])
 def test_patch_me_rejects_invalid_timezone(client: TestClient, db: Session, tz):
     assert client.patch("/api/me", json={"timezone": tz}).status_code == 422
     db.expire_all()
     assert db.get(User, 1).timezone == "UTC"
+
+
+@pytest.mark.parametrize("extra", [{"id": 2}, {"email": "evil@example.com"}])
+def test_patch_me_rejects_unknown_fields(client: TestClient, db: Session, extra):
+    assert client.patch("/api/me", json={"timezone": "Asia/Amman", **extra}).status_code == 422
+    db.expire_all()
+    user = db.get(User, 1)
+    assert (user.timezone, user.email) == ("UTC", None)
 
 
 def test_me_uses_current_user(client: TestClient, other_user: User):

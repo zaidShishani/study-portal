@@ -22,6 +22,16 @@ test('shows raw HTML as text instead of rendering it', () => {
   expect(container.querySelector('[onerror]')).toBeNull()
   expect(container.textContent).toContain('<script>alert(1)</script>')
   expect(container.textContent).toContain('<img src=x onerror=alert(1)>')
+  // Each HTML block is its own paragraph.
+  expect(container.querySelectorAll('p')).toHaveLength(2)
+})
+
+test('in-page anchors stay in the same tab', () => {
+  render(<MarkdownView>{'[top](#top)'}</MarkdownView>)
+  const link = screen.getByRole('link', { name: 'top' })
+  expect(link.getAttribute('href')).toBe('#top')
+  expect(link.getAttribute('target')).toBeNull()
+  expect(link.getAttribute('rel')).toBeNull()
 })
 
 test('strips javascript: hrefs', () => {

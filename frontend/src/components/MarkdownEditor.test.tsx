@@ -11,6 +11,11 @@ test('typing calls onChange with the new value', () => {
   expect(onChange).toHaveBeenCalledWith('# Hi')
 })
 
+test('textarea has an accessible name when no label is given', () => {
+  render(<MarkdownEditor value="" onChange={() => {}} />)
+  expect(screen.getByRole('textbox', { name: 'Markdown' })).toBeTruthy()
+})
+
 test('preview tab renders the markdown', () => {
   render(<MarkdownEditor value="**bold**" onChange={() => {}} />)
   fireEvent.click(screen.getByRole('tab', { name: 'Preview' }))

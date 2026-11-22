@@ -21,7 +21,7 @@ export default function MarkdownEditor({ value, onChange, label, minRows = 6 }: 
       <Box sx={{ pt: 2 }}>
         {tab === 'edit' ? (
           <TextField
-            label={label}
+            label={label ?? 'Markdown'}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             multiline

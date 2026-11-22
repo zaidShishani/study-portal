@@ -5,12 +5,13 @@ const MAX = 200
 
 type Props = {
   initialTitle?: string
+  pending?: boolean
   onSubmit: (title: string) => void
   onClose: () => void
 }
 
 // Rendered only while open, so state resets from initialTitle each time.
-export default function DeckDialog({ initialTitle = '', onSubmit, onClose }: Props) {
+export default function DeckDialog({ initialTitle = '', pending = false, onSubmit, onClose }: Props) {
   const [title, setTitle] = useState(initialTitle)
   const [touched, setTouched] = useState(false)
   const trimmed = title.trim()
@@ -19,7 +20,7 @@ export default function DeckDialog({ initialTitle = '', onSubmit, onClose }: Pro
   function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setTouched(true)
-    if (!error) onSubmit(trimmed)
+    if (!error && !pending) onSubmit(trimmed)
   }
 
   return (
@@ -40,7 +41,7 @@ export default function DeckDialog({ initialTitle = '', onSubmit, onClose }: Pro
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="contained">
+          <Button type="submit" variant="contained" disabled={pending}>
             Save
           </Button>
         </DialogActions>

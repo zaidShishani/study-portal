@@ -6,6 +6,7 @@ const MAX = 10_000
 
 type Props = {
   initial?: { front: string; back: string }
+  pending?: boolean
   onSubmit: (values: { front: string; back: string }) => void
   onClose: () => void
 }
@@ -13,7 +14,7 @@ type Props = {
 const validate = (value: string) => (!value.trim() ? 'Required' : value.length > MAX ? `Max ${MAX} characters` : '')
 
 // Rendered only while open, so state resets from `initial` each time.
-export default function CardDialog({ initial, onSubmit, onClose }: Props) {
+export default function CardDialog({ initial, pending = false, onSubmit, onClose }: Props) {
   const [front, setFront] = useState(initial?.front ?? '')
   const [back, setBack] = useState(initial?.back ?? '')
   const [touched, setTouched] = useState(false)
@@ -23,7 +24,7 @@ export default function CardDialog({ initial, onSubmit, onClose }: Props) {
     e.preventDefault()
     setTouched(true)
     // Markdown is sent as typed; whitespace can be meaningful.
-    if (!errors.front && !errors.back) onSubmit({ front, back })
+    if (!errors.front && !errors.back && !pending) onSubmit({ front, back })
   }
 
   return (
@@ -44,7 +45,7 @@ export default function CardDialog({ initial, onSubmit, onClose }: Props) {
         </DialogContent>
         <DialogActions>
           <Button onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="contained">
+          <Button type="submit" variant="contained" disabled={pending}>
             Save
           </Button>
         </DialogActions>
