@@ -1,7 +1,10 @@
+from logging.config import fileConfig
+
 from alembic import context
 from sqlalchemy import create_engine
 
-import app.models.users  # noqa: F401  registers tables on Base.metadata
+import app.models.decks  # noqa: F401  registers tables on Base.metadata
+import app.models.users  # noqa: F401
 from app.core.config import settings
 from app.core.db import Base
 
@@ -17,5 +20,6 @@ connection = context.config.attributes.get("connection")
 if connection is not None:
     run(connection)
 else:
+    fileConfig(context.config.config_file_name)
     with create_engine(settings.database_url).connect() as conn:
         run(conn)
