@@ -131,3 +131,26 @@ export type Problem = ProblemInput & {
   created_at: string
   updated_at: string
 }
+
+// Fields the client may send on event create/update; times are ISO strings with an offset.
+export type EventInput = {
+  title: string
+  description: string | null
+  start_at: string
+  end_at: string | null
+  all_day: boolean
+  rrule: string | null
+  remind_minutes_before: number | null
+}
+
+export type CalendarEventDetail = EventInput & { id: number; created_at: string; updated_at: string }
+
+// GET /api/calendar: expanded occurrences plus derived due items; dates are YYYY-MM-DD.
+export type CalendarData = {
+  events: { event_id: number; title: string; start: string; end: string | null; all_day: boolean }[]
+  card_due: { date: string; count: number }[]
+  problems_due: { id: number; title: string; date: string }[]
+  checkpoints: { id: number; roadmap_id: number; title: string; date: string }[]
+  truncated: boolean
+  invalid_event_ids?: number[]
+}
