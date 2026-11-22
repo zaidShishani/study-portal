@@ -11,7 +11,13 @@ MAX_LENGTH = 500
 MAX_WINDOW = timedelta(days=366)
 MAX_OCCURRENCES = 1000
 # Iteration starts at dtstart, so its cost grows with the distance to the window; bound both.
-MIN_YEAR, MAX_YEAR = 1900, 2200
+MAX_DISTANCE = timedelta(days=3653)  # 10 years
+
+
+def check_near_now(dt: datetime) -> None:
+    """Raise ValueError unless dt is within 10 years of now (past or future)."""
+    if abs(dt - datetime.now(UTC)) > MAX_DISTANCE:
+        raise ValueError("must be within 10 years of today")
 
 
 # No whitespace or extra ":" (rrulestr would read DTSTART/TZID lines), only RRULE characters.
@@ -72,8 +78,8 @@ def occurrences(event: Event, start: datetime, end: datetime, tz: ZoneInfo) -> l
         raise ValueError("window must be timezone-aware")
     if not timedelta(0) < end - start <= MAX_WINDOW:
         raise ValueError(f"window must be positive and at most {MAX_WINDOW.days} days")
-    if start.year < MIN_YEAR or end.year > MAX_YEAR:
-        raise ValueError(f"window must be within {MIN_YEAR}-{MAX_YEAR}")
+    check_near_now(start)
+    check_near_now(end)
     # An occurrence overlaps if it starts before `end` and ends at or after `start`.
     first = start - ((event.end_at or event.start_at) - event.start_at)
     if event.rrule is None:

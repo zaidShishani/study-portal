@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +9,7 @@ from app.models.users import User
 from app.routers import events as events_router
 
 URL = "/api/events"
+# shortcut: fixed dates must stay within 10 years of today (check_near_now); move them before 2035.
 START = "2026-01-05T09:00:00Z"
 OUT_KEYS = {
     "id", "title", "description", "start_at", "end_at", "all_day", "rrule",
@@ -122,7 +123,9 @@ def test_remind_bounds(client: TestClient, value: int, status: int):
         ("all_day", "true"),
         ("start_at", 1767603600),
         ("start_at", "2026-01-05T09:00:00"),  # naive
-        ("start_at", "2201-01-01T00:00:00Z"),  # outside the year range
+        ("start_at", "1900-01-01T00:00:00Z"),  # more than 10 years from today
+        ("start_at", (datetime.now(UTC) + timedelta(days=3654)).isoformat()),
+        ("end_at", "2201-01-01T00:00:00Z"),
         ("rrule", 1),
         ("title", ""),
         ("title", "   "),

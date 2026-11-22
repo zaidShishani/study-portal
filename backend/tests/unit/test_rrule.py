@@ -8,6 +8,7 @@ from app.models.events import Event
 from app.services import rrule
 from app.services.rrule import occurrences, validate
 
+# shortcut: fixed dates must stay within 10 years of today (check_near_now); move them before 2035.
 START = datetime(2026, 1, 1, 9, tzinfo=UTC)  # a Thursday
 NY = ZoneInfo("America/New_York")
 
@@ -97,11 +98,23 @@ def test_window_max_366_days():
         occ(ev("FREQ=DAILY"), at(2), START)  # reversed
 
 
-def test_window_must_be_aware_and_in_year_range():
+def test_window_must_be_aware_and_within_10_years_of_now():
     with pytest.raises(ValueError):
         occ(ev(), datetime(2026, 1, 1), datetime(2026, 1, 2))
-    with pytest.raises(ValueError):
-        occ(ev(), datetime(2200, 12, 31, tzinfo=UTC), datetime(2201, 1, 2, tzinfo=UTC))
+    now = datetime.now(UTC)
+    for start in (now + timedelta(days=3654), now - timedelta(days=3660)):
+        with pytest.raises(ValueError):
+            occ(ev(), start, start + timedelta(days=2))
+    occ(ev(), now + timedelta(days=3640), now + timedelta(days=3650))
+
+
+def test_check_near_now():
+    now = datetime.now(UTC)
+    rrule.check_near_now(now - timedelta(days=3650))
+    rrule.check_near_now(now + timedelta(days=3650))
+    for dt in (now - timedelta(days=3654), now + timedelta(days=3654)):
+        with pytest.raises(ValueError):
+            rrule.check_near_now(dt)
 
 
 def test_occurrence_cap(monkeypatch: pytest.MonkeyPatch):
