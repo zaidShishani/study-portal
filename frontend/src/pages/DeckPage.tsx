@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   Box,
@@ -18,7 +18,7 @@ import { ApiError } from '../api/client'
 import CardDialog from '../components/CardDialog'
 import ConfirmDialog from '../components/ConfirmDialog'
 import MarkdownView from '../components/MarkdownView'
-import { useCards, useCreateCard, useDeleteCard, useUpdateCard } from '../hooks/useCards'
+import { useCards, useCreateCard, useDeleteCard, useUnretireCard, useUpdateCard } from '../hooks/useCards'
 import { useDeck } from '../hooks/useDecks'
 import type { Card, CardStatus } from '../types'
 
@@ -33,6 +33,9 @@ export default function DeckPage() {
   const createCard = useCreateCard()
   const updateCard = useUpdateCard()
   const deleteCard = useDeleteCard()
+  const unretireCard = useUnretireCard()
+  // isPending lands a render late; the ref blocks a same-tick double click.
+  const unretiring = useRef(false)
   // null = closed; { card: undefined } = create; { card } = edit.
   const [editing, setEditing] = useState<{ card?: Card } | null>(null)
   const [deleting, setDeleting] = useState<Card | null>(null)
@@ -118,6 +121,25 @@ export default function DeckPage() {
                 Stage {card.stage} · {card.retired_at ? 'Retired' : `Due ${card.due_date}`}
               </Typography>
             </Box>
+            {card.retired_at && (
+              <Button
+                size="small"
+                aria-label={`Un-retire card: ${excerpt(card.front)}`}
+                onClick={() => {
+                  if (unretiring.current) return
+                  unretiring.current = true
+                  unretireCard.mutate(card.id, {
+                    onError,
+                    onSettled: () => {
+                      unretiring.current = false
+                    },
+                  })
+                }}
+                disabled={unretireCard.isPending}
+              >
+                Un-retire
+              </Button>
+            )}
             <IconButton aria-label={`Edit card: ${excerpt(card.front)}`} onClick={() => setEditing({ card })}>
               <EditIcon />
             </IconButton>

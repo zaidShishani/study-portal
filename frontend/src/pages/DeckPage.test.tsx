@@ -47,6 +47,11 @@ function mockApi(initial: Card[], deckDue = 1) {
       const status = u.searchParams.get('status')
       return Response.json(cards.filter((c) => status === 'all' || (status === 'retired') === !!c.retired_at))
     }
+    if (u.pathname.endsWith('/unretire')) {
+      const id = Number(u.pathname.split('/')[3])
+      cards = cards.map((c) => (c.id === id ? { ...c, retired_at: null, stage: 1, due_date: '2026-11-23' } : c))
+      return Response.json(cards.find((c) => c.id === id))
+    }
     if (method === 'POST') {
       const c = { ...card(cards.length + 10, body.front), back: body.back }
       cards.push(c)
@@ -189,6 +194,33 @@ test('delete asks for confirmation before calling the API', async () => {
   await waitFor(() => expect(screen.queryByText('doomed')).toBeNull())
   expect(screen.getByText('keeper')).toBeTruthy()
   expect(calls(fetchMock, 'DELETE')[0][0]).toBe('/api/cards/2')
+})
+
+test('un-retire moves a retired card back to the active list', async () => {
+  const fetchMock = mockApi([card(1, 'old news', true)])
+  renderPage()
+  expect(await screen.findByText('No cards here.')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: /Un-retire/ })).toBeNull()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Retired' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Un-retire card: old news' }))
+  await waitFor(() => expect(screen.queryByText('old news')).toBeNull())
+  expect(calls(fetchMock, 'POST')[0][0]).toBe('/api/cards/1/unretire')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Active' }))
+  expect(await screen.findByText('old news')).toBeTruthy()
+  expect(screen.getByText('Stage 1 · Due 2026-11-23')).toBeTruthy()
+})
+
+test('double-clicking Un-retire sends one POST', async () => {
+  const fetchMock = mockApi([card(1, 'old news', true)])
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: 'Retired' }))
+  const btn = await screen.findByRole('button', { name: 'Un-retire card: old news' })
+  fireEvent.click(btn)
+  fireEvent.click(btn)
+  await waitFor(() => expect(screen.queryByText('old news')).toBeNull())
+  expect(calls(fetchMock, 'POST')).toHaveLength(1)
 })
 
 test('unknown deck shows not found with a link back', async () => {
