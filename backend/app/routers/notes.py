@@ -2,6 +2,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import Row, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_db
@@ -26,6 +27,20 @@ def get_own_folder(folder_id: int, user: User, db: Session) -> NoteFolder:
     if folder is None:
         raise HTTPException(404, "Folder not found")
     return folder
+
+
+FOLDER_LINK_FKS = {"fk_note_folders_parent_owner", "fk_note_pages_folder_owner"}
+
+
+def commit_or_folder_404(db: Session) -> None:
+    """Commit a folder link; a folder deleted after its ownership check fails the FK -> 404, not 500."""
+    try:
+        db.commit()
+    except IntegrityError as e:
+        db.rollback()
+        if getattr(getattr(e.orig, "diag", None), "constraint_name", None) in FOLDER_LINK_FKS:
+            raise HTTPException(404, "Folder not found") from None
+        raise
 
 
 def _subtree_ids(folder_id: int, user: User, db: Session) -> set[int]:
@@ -53,7 +68,7 @@ def create_folder(
         get_own_folder(body.parent_id, user, db)
     folder = NoteFolder(user_id=user.id, parent_id=body.parent_id, name=body.name)
     db.add(folder)
-    db.commit()
+    commit_or_folder_404(db)
     return folder
 
 
@@ -75,7 +90,7 @@ def update_folder(
         folder.name = body.name
     if "parent_id" in body.model_fields_set:
         folder.parent_id = body.parent_id
-    db.commit()
+    commit_or_folder_404(db)
     return folder
 
 
@@ -119,7 +134,7 @@ def create_page(body: PageCreate, user: User = Depends(get_current_user), db: Se
         get_own_folder(body.folder_id, user, db)
     page = NotePage(user_id=user.id, folder_id=body.folder_id, title=body.title, content=body.content)
     db.add(page)
-    db.commit()
+    commit_or_folder_404(db)
     return page
 
 
@@ -144,7 +159,7 @@ def update_page(
         page.content = body.content
     if "folder_id" in body.model_fields_set:
         page.folder_id = body.folder_id
-    db.commit()
+    commit_or_folder_404(db)
     return page
 
 
