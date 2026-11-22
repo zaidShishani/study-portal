@@ -18,7 +18,7 @@ Work is tracked as GitHub Issues (one per ticket, milestone per phase).
 docker compose up --build                       # app: http://localhost:5173, API: http://localhost:8000/api
 docker compose exec backend pytest              # backend unit + integration
 docker compose exec backend alembic revision --autogenerate -m "<msg>"
-cd frontend && npm run lint && npx tsc --noEmit && npm test
+cd frontend && npm run lint && npx tsc -b && npm test   # lint = oxlint
 npx playwright test                             # e2e (stack must be up)
 ```
 (Commands become valid as the P1 tickets land; update this list if they change.)
