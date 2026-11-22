@@ -14,7 +14,7 @@ from pydantic import (
 )
 
 from app.schemas.common import InputModel, NoNul
-from app.services.rrule import MAX_YEAR, MIN_YEAR
+from app.services.rrule import check_near_now
 
 
 def _require_str(v: object) -> object:
@@ -23,16 +23,15 @@ def _require_str(v: object) -> object:
     return v
 
 
-def _in_year_range(v: datetime) -> datetime:
-    if not MIN_YEAR <= v.year <= MAX_YEAR:
-        raise ValueError(f"year must be within {MIN_YEAR}-{MAX_YEAR}")
-    return v
+def _near_now(v: datetime) -> datetime:
+    check_near_now(v)  # bounds RRULE expansion cost
+    return v.replace(microsecond=0)  # dateutil drops microseconds from dtstart
 
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200), NoNul]
 Description = Annotated[str, Field(max_length=10_000), NoNul]
 # ISO strings with an offset only; naive times are a 422.
-Time = Annotated[AwareDatetime, BeforeValidator(_require_str), AfterValidator(_in_year_range)]
+Time = Annotated[AwareDatetime, BeforeValidator(_require_str), AfterValidator(_near_now)]
 # Content is checked by app.services.rrule.validate (it needs start_at).
 Rule = Annotated[str, Field(max_length=500), NoNul]
 Remind = Annotated[StrictInt, Field(ge=0, le=10_080)]  # up to one week

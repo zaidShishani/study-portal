@@ -94,6 +94,32 @@ export type ProblemInput = {
   minutes: number | null
 }
 
+export type Roadmap = {
+  id: number
+  title: string
+  description: string | null
+  done_count: number
+  total_count: number
+  created_at: string
+  updated_at: string
+}
+
+// Fields the client may send on checkpoint create/update; dates are YYYY-MM-DD.
+export type CheckpointInput = {
+  title: string
+  description: string | null
+  target_date: string | null
+}
+
+export type Checkpoint = CheckpointInput & {
+  id: number
+  roadmap_id: number
+  position: number
+  done_at: string | null
+}
+
+export type RoadmapDetail = Roadmap & { checkpoints: Checkpoint[] }
+
 export type Problem = ProblemInput & {
   id: number
   last_result: LastResult | null

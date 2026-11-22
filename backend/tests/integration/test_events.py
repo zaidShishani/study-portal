@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,6 +9,7 @@ from app.models.users import User
 from app.routers import events as events_router
 
 URL = "/api/events"
+# shortcut: fixed dates must stay within 10 years of today (check_near_now); move them before 2035.
 START = "2026-01-05T09:00:00Z"
 OUT_KEYS = {
     "id", "title", "description", "start_at", "end_at", "all_day", "rrule",
@@ -61,6 +62,21 @@ def test_minimal_create_defaults(client: TestClient):
     assert {k: ev[k] for k in ("description", "end_at", "all_day", "rrule", "remind_minutes_before")} == {
         "description": None, "end_at": None, "all_day": False, "rrule": None, "remind_minutes_before": None,
     }  # fmt: skip
+
+
+def test_duration_max_366_days(client: TestClient, db: Session):
+    ok = {"title": "x", "start_at": START, "end_at": "2027-01-06T09:00:00Z"}  # 366 days
+    assert client.post(URL, json=ok).status_code == 201
+    assert client.post(URL, json={**ok, "end_at": "2027-01-06T09:00:01Z"}).status_code == 422
+    event = make_event(db, end_at=datetime(2026, 1, 6, 9, tzinfo=UTC))
+    # Merged check: moving start back makes the stored end too far away.
+    assert client.patch(f"{URL}/{event.id}", json={"start_at": "2025-01-04T09:00:00Z"}).status_code == 422
+
+
+def test_fractional_seconds_truncated(client: TestClient):
+    r = client.post(URL, json={"title": "x", "start_at": "2026-01-05T09:00:00.5Z", "rrule": "FREQ=DAILY"})
+    assert r.status_code == 201
+    assert datetime.fromisoformat(r.json()["start_at"]) == datetime(2026, 1, 5, 9, tzinfo=UTC)
 
 
 def test_end_before_start_rejected(client: TestClient, db: Session):
@@ -122,7 +138,9 @@ def test_remind_bounds(client: TestClient, value: int, status: int):
         ("all_day", "true"),
         ("start_at", 1767603600),
         ("start_at", "2026-01-05T09:00:00"),  # naive
-        ("start_at", "2201-01-01T00:00:00Z"),  # outside the year range
+        ("start_at", "1900-01-01T00:00:00Z"),  # more than 10 years from today
+        ("start_at", (datetime.now(UTC) + timedelta(days=3654)).isoformat()),
+        ("end_at", "2201-01-01T00:00:00Z"),
         ("rrule", 1),
         ("title", ""),
         ("title", "   "),
