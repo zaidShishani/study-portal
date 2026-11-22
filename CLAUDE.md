@@ -10,7 +10,7 @@ Work is tracked as GitHub Issues (one per ticket, milestone per phase).
 4. Implement **only** that issue's scope. If something is unclear, ask the user; do not assume product behavior.
 5. Write the tests the issue requires (unit / integration / e2e) and run them locally.
 6. Open a PR whose body contains `Closes #<number>` and fill in the PR checklist.
-7. Merge (squash) only when CI is green. The merge closes the issue.
+7. Merge with a merge commit (not squash — PRs are often stacked on each other) only when CI is green and the QA + security reviews pass. The merge closes the issue.
 8. If the issue is wrong or too big, comment on it and split it — don't silently widen scope.
 
 ## Commands
@@ -18,7 +18,7 @@ Work is tracked as GitHub Issues (one per ticket, milestone per phase).
 docker compose up --build                       # app: http://localhost:5173, API: http://localhost:8000/api
 docker compose exec backend pytest              # backend unit + integration
 docker compose exec backend alembic revision --autogenerate -m "<msg>"
-cd frontend && npm run lint && npx tsc --noEmit && npm test
+cd frontend && npm run lint && npx tsc -b && npm test   # lint = oxlint
 npx playwright test                             # e2e (stack must be up)
 ```
 (Commands become valid as the P1 tickets land; update this list if they change.)
