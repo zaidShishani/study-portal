@@ -44,7 +44,7 @@ def events_between(
             starts = rrule.occurrences(event, start, end, tz)
         except ValueError:
             # A stored rule that no longer validates must not break the whole calendar.
-            log.warning("calendar: skipping event %s with invalid rrule", event.id)
+            log.warning("events: skipping event %s with invalid rrule", event.id)
             invalid_event_ids.append(event.id)
             continue
         truncated |= len(starts) == rrule.MAX_OCCURRENCES

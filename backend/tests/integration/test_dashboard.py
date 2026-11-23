@@ -96,17 +96,19 @@ def test_events_today(client: TestClient, db: Session):
     one_off = Event(user_id=1, title="One-off", start_at=at(today, 7), end_at=at(today, 8))
     tomorrow = Event(user_id=1, title="Tomorrow", start_at=at(today + timedelta(days=1), 0))
     ended = Event(user_id=1, title="Ended", start_at=at(today - timedelta(days=1), 22), end_at=at(today, 0))
+    overnight = Event(user_id=1, title="Overnight", start_at=at(today - timedelta(days=1), 22), end_at=at(today, 2))
     bad = Event(user_id=1, title="Bad", start_at=at(today, 10), rrule="FREQ=DAILY")
-    db.add_all([weekly, other_day, one_off, tomorrow, ended, bad])
+    db.add_all([weekly, other_day, one_off, tomorrow, ended, overnight, bad])
     db.flush()
     db.execute(update(Event).where(Event.id == bad.id).values(rrule="FREQ=HOURLY"))  # bypasses API validation
 
     events = get(client)["events_today"]
-    assert [e["title"] for e in events] == ["One-off", "Weekly"]
-    assert events[0]["event_id"] == one_off.id and events[0]["all_day"] is False
-    assert datetime.fromisoformat(events[0]["start"]) == at(today, 7)
-    assert datetime.fromisoformat(events[0]["end"]) == at(today, 8)
-    assert datetime.fromisoformat(events[1]["start"]) == at(today, 9) and events[1]["end"] is None
+    assert [e["title"] for e in events] == ["Overnight", "One-off", "Weekly"]
+    assert datetime.fromisoformat(events[0]["start"]) == at(today - timedelta(days=1), 22)
+    assert events[1]["event_id"] == one_off.id and events[1]["all_day"] is False
+    assert datetime.fromisoformat(events[1]["start"]) == at(today, 7)
+    assert datetime.fromisoformat(events[1]["end"]) == at(today, 8)
+    assert datetime.fromisoformat(events[2]["start"]) == at(today, 9) and events[2]["end"] is None
 
 
 def test_timezone_changes_today(client: TestClient, db: Session):
@@ -129,13 +131,36 @@ def test_timezone_changes_today(client: TestClient, db: Session):
     assert body["decks"] == [] and body["due_card_total"] == 0 and body["problems_due"] == []
 
 
+def seed_roadmap(db: Session, user_id: int, done: int, total: int) -> Roadmap:
+    roadmap = Roadmap(user_id=user_id, title="r")
+    db.add(roadmap)
+    db.flush()
+    db.add_all(
+        Checkpoint(roadmap_id=roadmap.id, position=i, title="c", done_at=datetime.now(UTC) if i < done else None)
+        for i in range(total)
+    )
+    db.flush()
+    return roadmap
+
+
 def test_other_users_data_absent(client: TestClient, db: Session, other_user: User):
     today = today_for(db.get(User, 1))
     seed_due(db, 1, today)
-    db.add_all([Roadmap(user_id=1, title="r"), Event(user_id=1, title="e", start_at=datetime.now(UTC))])
+    seed_roadmap(db, 1, done=2, total=3)
+    db.add(Event(user_id=1, title="e", start_at=datetime.now(UTC)))
     db.flush()
+    assert get(client) == {"date": today_for(other_user).isoformat(), **EMPTY}
+
+    # With both users seeded, the caller sees only their own counts.
+    mine = Deck(user_id=other_user.id, title="mine")
+    db.add(mine)
+    db.flush()
+    db.add(card(mine, today_for(other_user)))
+    roadmap = seed_roadmap(db, other_user.id, done=1, total=1)
     body = get(client)
-    assert body == {"date": today_for(other_user).isoformat(), **EMPTY}
+    assert body["decks"] == [{"id": mine.id, "title": "mine", "due_count": 1}] and body["due_card_total"] == 1
+    assert body["roadmaps"] == [{"id": roadmap.id, "title": "r", "done": 1, "total": 1}]
+    assert body["problems_due"] == [] and body["events_today"] == []
 
 
 def test_empty_user(client: TestClient, db: Session):
