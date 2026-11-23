@@ -21,7 +21,8 @@ backend/
   alembic/versions/           # one migration per ticket that changes the schema
   tests/unit/  tests/integration/  tests/conftest.py
 frontend/src/
-  main.tsx App.tsx theme.ts
+  main.tsx App.tsx
+  theme/        # tokens.ts, theme.ts, ThemeModeProvider.tsx (see docs/DESIGN.md)
   api/          # client.ts (fetch wrapper) + one file per resource
   hooks/        # react-query hooks per resource
   components/   # shared + feature components

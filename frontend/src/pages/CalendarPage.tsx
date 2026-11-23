@@ -39,11 +39,13 @@ export default function CalendarPage() {
   const loadError = calendar.error ?? event.error
   const snackbar = message || (loadError && loadError !== dismissedError ? loadError.message : '')
 
+  const { palette } = theme
+  // Own events are solid monochrome; derived items use the semantic pastels (bg + matching text).
   const colors = {
-    event: theme.palette.primary.main,
-    cards: theme.palette.success.main,
-    problem: theme.palette.warning.main,
-    checkpoint: theme.palette.secondary.main,
+    event: { backgroundColor: palette.primary.main, borderColor: palette.primary.main, textColor: palette.primary.contrastText },
+    cards: { backgroundColor: palette.success.light, borderColor: palette.success.light, textColor: palette.success.main },
+    problem: { backgroundColor: palette.warning.light, borderColor: palette.warning.light, textColor: palette.warning.main },
+    checkpoint: { backgroundColor: palette.info.light, borderColor: palette.info.light, textColor: palette.info.main },
   }
   const data = calendar.data
   // Derived items are plain all-day entries with a link target; they're never editable.
@@ -55,28 +57,28 @@ export default function CalendarPage() {
           start: e.all_day ? ymd(e.start) : e.start,
           end: e.end ? (e.all_day ? ymd(e.end) : e.end) : undefined,
           allDay: e.all_day,
-          color: colors.event,
+          ...colors.event,
           extendedProps: { eventId: e.event_id },
         })),
         ...data.card_due.map((c) => ({
-          title: `${c.count} cards due`,
+          title: `${c.count} ${c.count === 1 ? 'card' : 'cards'} due`,
           start: c.date,
           allDay: true,
-          color: colors.cards,
+          ...colors.cards,
           extendedProps: { to: '/flashcards/review' },
         })),
         ...data.problems_due.map((p) => ({
           title: p.title,
           start: p.date,
           allDay: true,
-          color: colors.problem,
+          ...colors.problem,
           extendedProps: { to: `/leetcode/${p.id}` },
         })),
         ...data.checkpoints.map((c) => ({
           title: c.title,
           start: c.date,
           allDay: true,
-          color: colors.checkpoint,
+          ...colors.checkpoint,
           extendedProps: { to: `/roadmaps/${c.roadmap_id}` },
         })),
       ]
@@ -115,7 +117,8 @@ export default function CalendarPage() {
           ] as const
         ).map(([key, label]) => (
           <Stack key={key} component="li" direction="row" sx={{ alignItems: 'center', gap: 0.75 }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: 0.5, bgcolor: colors[key] }} />
+            {/* A deliberate dot, filled with the item's strong color so pastels stay visible. */}
+            <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: key === 'event' ? colors.event.backgroundColor : colors[key].textColor }} />
             <Typography variant="body2">{label}</Typography>
           </Stack>
         ))}
