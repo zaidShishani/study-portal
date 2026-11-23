@@ -121,3 +121,20 @@ test('polling errors warn once and show nothing', async () => {
   await waitFor(() => expect(warn).toHaveBeenCalledTimes(1))
   expect(screen.getByRole('button', { name: 'Notifications, 0 unread' })).toBeTruthy()
 })
+
+test('warns again after the API recovers and fails again', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  const fetchMock = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('down'))
+    .mockResolvedValueOnce(Response.json([]))
+    .mockRejectedValueOnce(new Error('down again'))
+  vi.stubGlobal('fetch', fetchMock)
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  renderBell()
+  await waitFor(() => expect(warn).toHaveBeenCalledTimes(1))
+  await act(() => vi.advanceTimersByTimeAsync(60_000))
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+  await act(() => vi.advanceTimersByTimeAsync(60_000))
+  await waitFor(() => expect(warn).toHaveBeenCalledTimes(2))
+})

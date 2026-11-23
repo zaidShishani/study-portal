@@ -48,12 +48,18 @@ export default function NotificationBell() {
         {data.map((n) => (
           <MenuItem
             key={n.id}
-            onClick={() => {
-              run((opts) => markRead.mutate(n.id, opts))
-              navigate('/calendar')
-            }}
+            onClick={() =>
+              run((opts) => {
+                markRead.mutate(n.id, opts)
+                navigate('/calendar')
+              })
+            }
           >
-            <ListItemText primary={n.title} secondary={formatTime(n.occurrence_start)} />
+            <ListItemText
+              primary={n.title}
+              secondary={formatTime(n.occurrence_start)}
+              slotProps={{ primary: { noWrap: true, title: n.title } }}
+            />
           </MenuItem>
         ))}
         {data.length > 0 && <Divider />}

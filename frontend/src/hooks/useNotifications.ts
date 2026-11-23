@@ -11,7 +11,11 @@ export function useNotifications() {
 
   // Polling fails quietly: one console warning, no UI noise; the last good list stays shown.
   useEffect(() => {
-    if (!query.error || warned.current) return
+    if (!query.error) {
+      warned.current = false // recovered: warn again on the next outage
+      return
+    }
+    if (warned.current) return
     warned.current = true
     console.warn('Could not load /api/notifications', query.error)
   }, [query.error])
