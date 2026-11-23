@@ -14,7 +14,9 @@ test('expand a card in place, open a nested view, then refresh, browser Back and
   const grid = await box(page, 'Flashcards')
   await page.getByRole('button', { name: 'Expand Flashcards' }).click()
   await at('/?focus=flashcards')
-  await expect(page.getByRole('heading', { level: 1, name: 'Flashcards' })).toBeFocused()
+  // Focus moves to the card title; the view adds no h1 of its own.
+  await expect(page.getByRole('heading', { level: 2, name: 'Flashcards' })).toBeFocused()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(0)
   await expect(page.getByRole('region', { name: 'LeetCode' })).toHaveCount(0)
   // The card itself grows to the whole content area (Notes' right edge, Roadmaps' bottom edge).
   await expect(async () => {
@@ -24,15 +26,15 @@ test('expand a card in place, open a nested view, then refresh, browser Back and
   }).toPass()
   expect(await page.evaluate(() => document.scrollingElement!.scrollHeight <= innerHeight)).toBe(true)
 
-  await page.getByRole('main').getByText(title).click()
+  await page.getByRole('navigation', { name: 'Decks' }).getByText(title).click()
   await at(`/?focus=flashcards&deck=${id}`)
-  await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 3, name: title })).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 3, name: title })).toBeVisible()
 
   await page.goBack()
   await at('/?focus=flashcards')
-  await expect(page.getByRole('heading', { level: 1, name: 'Flashcards' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Decks' })).toBeVisible()
 
   await page.keyboard.press('Escape')
   await at('/')

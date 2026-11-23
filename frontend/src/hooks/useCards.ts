@@ -8,7 +8,8 @@ export const useCards = (deckId: number, status: CardStatus) =>
 
 // Card changes also move the deck's card/due counts, so refresh decks too.
 // onSettled (like useDecks): a failed call (e.g. 404 after another tab deleted it) also resyncs.
-function useCardMutation<A, R>(mutationFn: (arg: A) => Promise<R>) {
+// Edits also refresh the open review queue (it sits beside the card list); answering doesn't, so cards don't reshuffle.
+function useCardMutation<A, R>(mutationFn: (arg: A) => Promise<R>, refreshQueue = true) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn,
@@ -16,6 +17,7 @@ function useCardMutation<A, R>(mutationFn: (arg: A) => Promise<R>) {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ['cards'] }),
         queryClient.invalidateQueries({ queryKey: ['decks'] }),
+        refreshQueue && queryClient.invalidateQueries({ queryKey: ['review'] }),
       ]),
   })
 }
@@ -23,10 +25,10 @@ function useCardMutation<A, R>(mutationFn: (arg: A) => Promise<R>) {
 export const useCreateCard = () => useCardMutation(createCard)
 export const useUpdateCard = () => useCardMutation(updateCard)
 export const useDeleteCard = () => useCardMutation(deleteCard)
-export const useReviewCard = () => useCardMutation(reviewCard)
+export const useReviewCard = () => useCardMutation(reviewCard, false)
 export const useUnretireCard = () => useCardMutation(unretireCard)
 
-// Fetched once per visit: never stale (no refetch mid-session, so answered cards don't reshuffle),
+// Fetched once per visit: never stale (no refetch from answering, so cards don't reshuffle; card edits do refetch),
 // and dropped on unmount (gcTime 0) so the next visit loads a fresh queue.
 export const useReviewQueue = (deckId?: number) =>
   useQuery({

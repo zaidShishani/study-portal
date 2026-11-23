@@ -138,6 +138,15 @@ export function createAppTheme(mode: 'light' | 'dark') {
           notchedOutline: { borderColor: t.border },
         },
       },
+      // Controls are 28–32px: fields default to the small (32px, 13px text) size, dialogs included.
+      MuiTextField: { defaultProps: { size: 'small' } },
+      MuiPickersTextField: { defaultProps: { size: 'small' } },
+      MuiFormHelperText: { styleOverrides: { root: { fontSize: px(12), marginInline: 0 } } },
+      // Dialogs: radius 8 (shape) + 1px border from MuiPaper; 14/600 title, 24px gutters on the 4px scale.
+      MuiDialogTitle: { styleOverrides: { root: { fontSize: px(14), fontWeight: 600, lineHeight: 1.5, padding: '20px 24px 12px' } } },
+      MuiDialogContent: { styleOverrides: { root: { padding: '4px 24px 8px' } } },
+      MuiDialogContentText: { styleOverrides: { root: { fontSize: px(13), color: t.textMuted } } },
+      MuiDialogActions: { styleOverrides: { root: { padding: '16px 24px 20px', gap: 8, '& > :not(style) ~ :not(style)': { marginLeft: 0 } } } },
       MuiTooltip: { styleOverrides: { tooltip: { backgroundColor: t.text, color: t.surface, borderRadius: radius } } },
       MuiToggleButton: {
         styleOverrides: { root: { borderRadius: radius, '&.Mui-selected': { backgroundColor: t.accentSoft, color: t.text } } },

@@ -17,20 +17,23 @@ test('top bar navigates to Settings and Home', async ({ page, baseURL }) => {
 })
 
 test('old section URLs redirect to focus views; including notes and calendar', async ({ page, baseURL }) => {
-  for (const [path, url, title] of [
-    ['/flashcards', '/?focus=flashcards', 'Flashcards'],
-    ['/leetcode', '/?focus=leetcode', 'LeetCode'],
-    ['/roadmaps', '/?focus=roadmaps', 'Roadmaps'],
-    ['/flashcards/999999', '/?focus=flashcards&deck=999999', 'Deck not found'],
-    ['/flashcards/review', '/?focus=flashcards&review=all', /^(Nothing due|Review)$/],
-    ['/leetcode/999999', '/?focus=leetcode&problem=999999', 'Problem not found'],
-    ['/roadmaps/999999', '/?focus=roadmaps&roadmap=999999', 'Roadmap not found'],
-    ['/notes', '/?focus=notes', 'Notes'],
-    ['/calendar', '/?focus=calendar', 'Calendar'],
-  ] as [string, string, string | RegExp][]) {
+  // [old path, focus URL, expanded card, a heading inside the view (views have no h1 of their own)]
+  for (const [path, url, panel, heading] of [
+    ['/flashcards', '/?focus=flashcards', 'Flashcards', /^Review · /],
+    ['/leetcode', '/?focus=leetcode', 'LeetCode', null],
+    ['/roadmaps', '/?focus=roadmaps', 'Roadmaps', null],
+    ['/flashcards/999999', '/?focus=flashcards&deck=999999', 'Flashcards', 'Deck not found'],
+    ['/flashcards/review', '/?focus=flashcards&review=all', 'Flashcards', 'Review · All decks'],
+    ['/leetcode/999999', '/?focus=leetcode&problem=999999', 'LeetCode', 'Problem not found'],
+    ['/roadmaps/999999', '/?focus=roadmaps&roadmap=999999', 'Roadmaps', 'Roadmap not found'],
+    ['/notes', '/?focus=notes', 'Notes', null],
+    ['/calendar', '/?focus=calendar', 'Calendar', null],
+  ] as [string, string, string, string | RegExp | null][]) {
     await page.goto(path)
     await expect(page).toHaveURL(new URL(url, baseURL).href)
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(title)
+    await expect(page.getByRole('button', { name: `Collapse ${panel}` })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(0)
+    if (heading) await expect(page.getByRole('heading', { level: 3, name: heading })).toBeVisible()
   }
 })
 

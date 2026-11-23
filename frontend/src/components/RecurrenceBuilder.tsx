@@ -16,6 +16,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 import dayjs from 'dayjs'
 import { NO_RECURRENCE, WEEKDAYS, recurrenceError, type RecurrenceState } from './recurrence'
+import { fonts } from '../theme/tokens'
 
 const FREQ_LABELS = { NONE: 'Does not repeat', DAILY: 'Daily', WEEKLY: 'Weekly', MONTHLY: 'Monthly', YEARLY: 'Yearly' }
 const UNITS = { NONE: '', DAILY: 'day(s)', WEEKLY: 'week(s)', MONTHLY: 'month(s)', YEARLY: 'year(s)' }
@@ -39,7 +40,7 @@ export default function RecurrenceBuilder({ value, rawRule, start, onChange }: P
     return (
       <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
         <Typography variant="body2">Repeats (custom rule):</Typography>
-        <Typography variant="body2" sx={{ fontFamily: 'monospace', overflowWrap: 'anywhere' }}>
+        <Typography variant="body2" sx={{ fontFamily: fonts.mono, overflowWrap: 'anywhere' }}>
           {rawRule}
         </Typography>
         <Button size="small" onClick={() => onChange(NO_RECURRENCE)}>

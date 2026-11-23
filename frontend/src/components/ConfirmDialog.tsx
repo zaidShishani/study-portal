@@ -18,7 +18,7 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = 'De
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button color="error" onClick={onConfirm}>
+        <Button variant="contained" color="error" onClick={onConfirm}>
           {confirmLabel}
         </Button>
       </DialogActions>

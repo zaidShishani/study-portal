@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Box, Button, Checkbox, CircularProgress, LinearProgress, NativeSelect, Stack, Typography, type Theme } from '@mui/material'
+import { Box, Button, Checkbox, CircularProgress, LinearProgress, Stack, Typography } from '@mui/material'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import CalendarCard from '../components/CalendarCard'
 import Card from '../components/Card'
@@ -14,17 +14,14 @@ import { useProblems } from '../hooks/useProblems'
 import { useRoadmap, useRoadmaps } from '../hooks/useRoadmaps'
 import { fonts } from '../theme/tokens'
 import CalendarPage from './CalendarPage'
-import DeckPage from './DeckPage'
 import FlashcardsPage from './FlashcardsPage'
 import LeetCodePage from './LeetCodePage'
 import NotesPage from './NotesPage'
 import ProblemPage from './ProblemPage'
-import ReviewPage from './ReviewPage'
 import RoadmapPage from './RoadmapPage'
 import RoadmapsPage from './RoadmapsPage'
 
 const WIDE = `@media ${WIDE_QUERY}`
-const PHONE = (t: Theme) => t.breakpoints.down('sm')
 const TITLES: Record<PanelName, string> = {
   flashcards: 'Flashcards',
   leetcode: 'LeetCode',
@@ -152,8 +149,7 @@ function Recent() {
       {!data.length && <Note>No pages yet.</Note>}
       {data.map((p) => (
         <ListRow key={p.id} to={focusUrl({ focus: 'notes', page: p.id })}>
-          {/* 47 + the 1px divider = a 48px row. */}
-          <Box sx={{ minWidth: 0, height: 47, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <Box sx={{ minWidth: 0, py: 0.75 }}>
             <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</Box>
             <Typography variant="body2" color="text.secondary" noWrap>
               {`${p.folder_name ?? 'Root'} · ${timeAgo(p.updated_at)}`}
@@ -180,42 +176,30 @@ export default function HomePage() {
   const creating = useRef(false)
   // The notes view reports unsaved edits so leaving it (collapse, Escape) can ask first.
   const notesDirty = useRef(false)
-  const focusBox = useRef<HTMLDivElement>(null)
   const cards = useRef<Record<string, HTMLElement | null>>({})
   const slots = useRef<Record<string, HTMLElement | null>>({})
   const lastFocus = useRef(focus)
   const lastSearch = useRef(search)
   useExpandFlip(focus, cards, slots)
 
-  // a11y: entering a view focuses its h1; leaving focuses the card's expand button. Views whose h1 waits for
-  // data (problem, review) hold focus on the view box until it appears.
+  // a11y: entering a view focuses the card title; leaving focuses the card's expand button. Moving inside a view
+  // (e.g. picking a deck) leaves focus alone unless the clicked control went away.
   useEffect(() => {
     // Only on navigation, not on first load or refresh.
     if (lastSearch.current === search) return
     lastSearch.current = search
     const prev = lastFocus.current
     lastFocus.current = focus
-    const box = focusBox.current
-    if (!focus || !box) {
+    if (!focus) {
       if (prev) cards.current[prev]?.querySelector<HTMLElement>('button[aria-expanded]')?.focus()
       return
     }
-    const focusH1 = () => {
-      const h1 = box.querySelector('h1')
-      if (h1) {
-        h1.tabIndex = -1
-        h1.focus()
-      }
-      return h1
-    }
-    if (focusH1()) return
-    box.focus()
-    const observer = new MutationObserver(() => {
-      // Give up if the user moved focus meanwhile.
-      if (document.activeElement !== box || focusH1()) observer.disconnect()
-    })
-    observer.observe(box, { childList: true, subtree: true })
-    return () => observer.disconnect()
+    const card = cards.current[focus]
+    if (prev === focus && card?.contains(document.activeElement)) return
+    const title = card?.querySelector('h2')
+    if (!title) return
+    title.tabIndex = -1
+    title.focus()
   }, [focus, search])
 
   const leave = useCallback(() => {
@@ -239,14 +223,7 @@ export default function HomePage() {
 
   const view = (name: PanelName) =>
     ({
-      flashcards:
-        review !== undefined ? (
-          <ReviewPage deckId={review === 'all' ? undefined : review} />
-        ) : deck ? (
-          <DeckPage deckId={deck} />
-        ) : (
-          <FlashcardsPage />
-        ),
+      flashcards: <FlashcardsPage deckId={deck ?? (review === 'all' ? undefined : review)} reviewAll={review === 'all'} />,
       leetcode: problem ? <ProblemPage problemId={problem} /> : <LeetCodePage />,
       roadmaps: roadmap ? <RoadmapPage roadmapId={roadmap} /> : <RoadmapsPage />,
       calendar: <CalendarPage />,
@@ -291,23 +268,8 @@ export default function HomePage() {
       body: <LeetCode today={date} />,
     },
     roadmaps: {
-      tabs: roadmaps.data && roadmaps.data.length > 0 && (
-        <>
-        {/* Phone width: a compact select instead of a tab strip that can't fit the 48px header. */}
-        <NativeSelect
-          value={selected?.id}
-          onChange={(e) => setRoadmapTab(Number(e.target.value))}
-          inputProps={{ 'aria-label': 'Roadmap' }}
-          disableUnderline
-          sx={(t) => ({ display: 'none', minWidth: 0, ml: 1, fontSize: 13, [PHONE(t)]: { display: 'inline-flex' } })}
-        >
-          {roadmaps.data.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.title}
-            </option>
-          ))}
-        </NativeSelect>
-        <Stack direction="row" sx={(t) => ({ gap: 0.5, ml: 1, minWidth: 0, overflowX: 'auto', [PHONE(t)]: { display: 'none' } })}>
+      tabs: (
+        <Stack direction="row" sx={{ gap: 0.5, ml: 1, minWidth: 0, overflowX: 'auto' }}>
           {roadmaps.data?.map((r) => (
             <Button
               key={r.id}
@@ -321,11 +283,10 @@ export default function HomePage() {
             </Button>
           ))}
         </Stack>
-        </>
       ),
       actions: selected && (
         <>
-          <Typography variant="body2" sx={(t) => ({ ...mono, color: 'text.secondary', whiteSpace: 'nowrap', [PHONE(t)]: { display: 'none' } })}>
+          <Typography variant="body2" sx={{ ...mono, color: 'text.secondary', whiteSpace: 'nowrap' }}>
             {selected.done_count} / {selected.total_count}
           </Typography>
           <LinearProgress
@@ -423,13 +384,7 @@ export default function HomePage() {
               expanded={expanded}
               onExpand={expanded ? leave : () => navigate(focusUrl({ focus: name }))}
             >
-              {expanded ? (
-                <Box ref={focusBox} tabIndex={-1} sx={{ p: 3, outline: 'none', '& h1:focus': { outline: 'none' } }}>
-                  {view(name)}
-                </Box>
-              ) : (
-                body
-              )}
+              {expanded ? view(name) : body}
             </Card>
           </Box>
         )

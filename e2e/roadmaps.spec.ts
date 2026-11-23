@@ -18,12 +18,12 @@ test('create roadmap, add 3 checkpoints, check one, reorder persists after reloa
     await expect(dialog).toBeHidden()
     await expect(page.getByRole('checkbox', { name: `Done: ${name}` })).toBeVisible()
   }
-  await expect(page.getByText('0/3 · 0%')).toBeVisible()
+  await expect(page.getByText('0 / 3')).toBeVisible()
 
   // click, not check(): the box is controlled by server state, so it flips after the PATCH + refetch.
   await page.getByRole('checkbox', { name: 'Done: First' }).click()
   await expect(page.getByRole('checkbox', { name: 'Done: First' })).toBeChecked()
-  await expect(page.getByText('1/3 · 33%')).toBeVisible()
+  await expect(page.getByText('1 / 3')).toBeVisible()
 
   const items = page.getByRole('main').getByRole('listitem')
   await page.getByRole('button', { name: 'Move up: Third' }).click()
@@ -37,5 +37,6 @@ test('create roadmap, add 3 checkpoints, check one, reorder persists after reloa
 
   await page.goto('/roadmaps')
   await expect(page).toHaveURL(/\/\?focus=roadmaps$/)
-  await expect(page.getByRole('link', { name: new RegExp(title) })).toContainText('1/3 · 33%')
+  // The list row (the link's parent) shows Mono done / total.
+  await expect(page.getByRole('link', { name: title, exact: true }).locator('..')).toContainText('1 / 3')
 })

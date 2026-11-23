@@ -19,15 +19,25 @@ const deck = (id: number, title: string): Deck => ({
   updated_at: '2026-01-01T00:00:00Z',
 })
 
-// Tiny in-memory /api/decks so mutations + refetch behave like the real API.
+// Tiny in-memory API: /api/decks CRUD, deck detail, card list/create, review queue.
 function mockApi(initial: Deck[], fail?: { method: string; status: number; detail: string }) {
   let decks = [...initial]
+  const cards: unknown[] = []
   const fetchMock = vi.fn(async (url: string, init: RequestInit = {}) => {
     const method = init.method ?? 'GET'
     if (fail && fail.method === method) return Response.json({ detail: fail.detail }, { status: fail.status })
-    const id = Number(url.split('/')[3])
+    const path = url.split('?')[0]
+    const id = Number(path.split('/')[3])
     const body = init.body ? JSON.parse(String(init.body)) : undefined
-    if (method === 'GET') return Response.json(decks)
+    if (path.startsWith('/api/review/')) return Response.json([])
+    if (path.endsWith('/cards')) {
+      if (method === 'GET') return Response.json(cards)
+      const c = { id: cards.length + 1, deck_id: id, ...body, stage: 0, due_date: null, retired_at: null }
+      cards.push(c)
+      return Response.json(c, { status: 201 })
+    }
+    if (method === 'GET' && path === '/api/decks') return Response.json(decks)
+    if (method === 'GET') return Response.json(decks.find((d) => d.id === id))
     if (method === 'POST') {
       const d = deck(decks.length + 10, body.title)
       decks.push(d)
@@ -47,13 +57,13 @@ function mockApi(initial: Deck[], fail?: { method: string; status: number; detai
 // Focus links land on the home URL; render its query so tests can assert where they went.
 const Search = () => <h1>{useLocation().search}</h1>
 
-function renderPage() {
+function renderPage(props: { deckId?: number; reviewAll?: boolean } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={['/flashcards']}>
         <Routes>
-          <Route path="/flashcards" element={<FlashcardsPage />} />
+          <Route path="/flashcards" element={<FlashcardsPage {...props} />} />
           <Route path="/" element={<Search />} />
         </Routes>
       </MemoryRouter>
@@ -64,14 +74,75 @@ function renderPage() {
 const calls = (fetchMock: { mock: { calls: [string, RequestInit?][] } }, method: string) =>
   fetchMock.mock.calls.filter(([, init]) => init?.method === method)
 
-test('renders decks from the API with counts and links to the deck', async () => {
-  mockApi([deck(1, 'Biology'), deck(2, 'History')])
+test('three panes: deck list (first selected), its cards, and its review; decks link to themselves', async () => {
+  const fetchMock = mockApi([deck(1, 'Biology'), deck(2, 'History')])
   renderPage()
-  expect(await screen.findByText('Biology')).toBeTruthy()
-  expect(screen.getByText('History')).toBeTruthy()
-  expect(screen.getAllByText('3 cards · 1 due')).toHaveLength(2)
-  fireEvent.click(screen.getByText('Biology'))
-  expect(screen.getByRole('heading', { name: '?focus=flashcards&deck=1' })).toBeTruthy()
+  const nav = await screen.findByRole('navigation', { name: 'Decks' })
+  const biology = await within(nav).findByRole('link', { name: /Biology/ })
+  expect(biology.getAttribute('aria-current')).toBe('page')
+  expect(within(nav).getByRole('link', { name: /History/ }).getAttribute('aria-current')).toBeNull()
+  expect(biology.textContent).toContain('1')
+  expect(await screen.findByRole('heading', { level: 3, name: 'Biology' })).toBeTruthy()
+  expect(screen.getByRole('group', { name: 'Card filter' })).toBeTruthy()
+  expect(await screen.findByRole('heading', { name: 'Review · Biology' })).toBeTruthy()
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/review/cards?deck_id=1', expect.anything()))
+  fireEvent.click(within(nav).getByRole('link', { name: /History/ }))
+  expect(screen.getByRole('heading', { name: '?focus=flashcards&deck=2' })).toBeTruthy()
+})
+
+test('deckId selects that deck; reviewAll reviews every deck', async () => {
+  const fetchMock = mockApi([deck(1, 'Biology'), deck(2, 'History')])
+  renderPage({ deckId: 2, reviewAll: true })
+  const nav = await screen.findByRole('navigation', { name: 'Decks' })
+  expect((await within(nav).findByRole('link', { name: /History/ })).getAttribute('aria-current')).toBe('page')
+  expect(await screen.findByRole('heading', { level: 3, name: 'History' })).toBeTruthy()
+  expect(await screen.findByRole('heading', { name: 'Review · All decks' })).toBeTruthy()
+  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/review/cards', expect.anything()))
+})
+
+test('header actions: Review all links to the all-decks review, disabled when nothing is due', async () => {
+  mockApi([deck(1, 'Biology')])
+  renderPage()
+  const review = await screen.findByRole('link', { name: 'Review all' })
+  await waitFor(() => expect(review.getAttribute('aria-disabled')).toBeNull())
+  expect(review.getAttribute('href')).toBe('/?focus=flashcards&review=all')
+  cleanup()
+
+  mockApi([{ ...deck(1, 'Biology'), due_count: 0 }])
+  renderPage()
+  expect((await screen.findByRole('link', { name: 'Review all' })).getAttribute('aria-disabled')).toBe('true')
+})
+
+test('New card validates and creates a card in the selected deck', async () => {
+  const fetchMock = mockApi([deck(1, 'Biology')])
+  renderPage()
+  const newCard = await screen.findByRole('button', { name: 'New card' })
+  await waitFor(() => expect((newCard as HTMLButtonElement).disabled).toBe(false))
+  fireEvent.click(newCard)
+  const dialog = screen.getByRole('dialog')
+  const save = () => fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+  save()
+  expect(within(dialog).getByText('Front: Required')).toBeTruthy()
+  fireEvent.change(within(dialog).getByLabelText('Front'), { target: { value: 'x'.repeat(10_001) } })
+  fireEvent.change(within(dialog).getByLabelText('Back'), { target: { value: 'answer' } })
+  save()
+  expect(within(dialog).getByText('Front: Max 10000 characters')).toBeTruthy()
+  fireEvent.change(within(dialog).getByLabelText('Front'), { target: { value: 'question' } })
+  save()
+  save()
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  const posts = calls(fetchMock, 'POST')
+  expect(posts).toHaveLength(1)
+  expect(posts[0][0]).toBe('/api/decks/1/cards')
+  expect(JSON.parse(String(posts[0][1]?.body))).toEqual({ front: 'question', back: 'answer' })
+  expect(await screen.findByText('question')).toBeTruthy()
+})
+
+test('New card is disabled without decks', async () => {
+  mockApi([])
+  renderPage()
+  expect(await screen.findByText(/No decks yet/)).toBeTruthy()
+  expect((screen.getByRole('button', { name: 'New card' }) as HTMLButtonElement).disabled).toBe(true)
 })
 
 test('shows empty state when there are no decks', async () => {
@@ -98,7 +169,7 @@ test('create dialog validates, trims and submits', async () => {
 
   fireEvent.change(input, { target: { value: '  Chemistry  ' } })
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
-  expect(await screen.findByText('Chemistry')).toBeTruthy()
+  expect(await screen.findByRole('link', { name: /Chemistry/ })).toBeTruthy()
   expect(JSON.parse(String(calls(fetchMock, 'POST')[0][1]?.body))).toEqual({ title: 'Chemistry' })
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 })
@@ -148,7 +219,7 @@ test('rename prefills the title and PATCHes the deck', async () => {
   expect(input.value).toBe('Biology')
   fireEvent.change(input, { target: { value: 'Botany' } })
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }))
-  expect(await screen.findByText('Botany')).toBeTruthy()
+  expect(await screen.findByRole('link', { name: /Botany/ })).toBeTruthy()
   expect(calls(fetchMock, 'PATCH')[0][0]).toBe('/api/decks/1')
 })
 
@@ -162,7 +233,7 @@ test('delete asks for confirmation before calling the API', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: 'Delete Biology' }))
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
-  await waitFor(() => expect(screen.queryByText('Biology')).toBeNull())
+  await waitFor(() => expect(screen.queryByRole('link', { name: /Biology/ })).toBeNull())
   expect(calls(fetchMock, 'DELETE')[0][0]).toBe('/api/decks/1')
 })
 

@@ -163,7 +163,7 @@ test('mini month: dots on busy days, today agenda, day selection, month paging',
   expect(within(link(cal, /Standup/)).getByText('09:00')).toBeTruthy()
   expect(href(cal, /Standup/)).toBe('/?focus=calendar')
   expect(href(cal, /1 card due/)).toBe('/?focus=flashcards&review=all')
-  expect(href(cal, /1 problem due/)).toBe('/?focus=leetcode')
+  expect(href(cal, /Two Sum/)).toBe('/?focus=leetcode&problem=7')
 
   // An overnight event on its second day has no start time that day.
   fireEvent.click(day(24))
@@ -172,8 +172,7 @@ test('mini month: dots on busy days, today agenda, day selection, month paging',
 
   fireEvent.click(day(27))
   expect(within(cal).getByRole('heading', { name: 'Nov 27' })).toBeTruthy()
-  expect(href(cal, /1 checkpoint due/)).toBe('/?focus=roadmaps')
-  expect(within(cal).queryByText('Learn SQL')).toBeNull()
+  expect(href(cal, /Learn SQL/)).toBe('/?focus=roadmaps&roadmap=3')
 
   fireEvent.click(day(26))
   expect(within(cal).getByText('Nothing scheduled.')).toBeTruthy()
@@ -200,12 +199,21 @@ test('notes card: RECENT pages with folder and relative time; New page opens it 
   expect(JSON.parse(String(post[1]!.body))).toEqual({ title: 'Untitled', folder_id: null })
 })
 
-test('a nested view whose h1 waits for data gets focus once the h1 appears', async () => {
+test('opening a nested view from home focuses the card title; views render no h1 of their own', async () => {
   renderPage()
   fireEvent.click(await screen.findByRole('link', { name: /Two Sum/ }))
   expect(search()).toBe('?focus=leetcode&problem=7')
-  const h1 = await screen.findByRole('heading', { level: 1, name: 'Problem not found' })
-  await waitFor(() => expect(document.activeElement).toBe(h1))
+  expect(document.activeElement).toBe(screen.getByRole('heading', { level: 2, name: 'LeetCode' }))
+  expect(await screen.findByRole('heading', { name: 'Problem not found' })).toBeTruthy()
+  expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
+})
+
+test('view actions render in the expanded card header, before the collapse button', async () => {
+  renderPage({}, { path: '/?focus=leetcode' })
+  const header = screen.getByRole('heading', { level: 2, name: 'LeetCode' }).parentElement!
+  const add = await within(header).findByRole('button', { name: 'New problem' })
+  const collapse = within(header).getByRole('button', { name: 'Collapse LeetCode' })
+  expect(add.compareDocumentPosition(collapse) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
 
 test('empty states and Start review disabled at 0', async () => {
@@ -230,7 +238,7 @@ test('expand: the card stays and shows the view, siblings hide; collapse restore
   expect(expand.getAttribute('aria-expanded')).toBe('false')
   fireEvent.click(expand)
   expect(search()).toBe('?focus=leetcode')
-  expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'LeetCode' }))
+  expect(document.activeElement).toBe(screen.getByRole('heading', { level: 2, name: 'LeetCode' }))
   expect(panel('LeetCode')).toBeTruthy()
   expect(screen.queryByRole('region', { name: 'Flashcards' })).toBeNull()
 
@@ -262,6 +270,7 @@ test('nested views render from the URL', async () => {
 
   renderPage({}, { path: '/?focus=flashcards&review=all' })
   expect(await screen.findByRole('heading', { name: 'Nothing due' })).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'Review · All decks' })).toBeTruthy()
   cleanup()
 
   renderPage({}, { path: '/?focus=leetcode&problem=7' })
@@ -273,20 +282,24 @@ test('nested views render from the URL', async () => {
   cleanup()
 
   renderPage({}, { path: '/?focus=calendar' })
-  expect(await screen.findByRole('heading', { level: 1, name: 'Calendar' })).toBeTruthy()
+  expect(await screen.findByRole('list', { name: 'Legend' })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Collapse Calendar' })).toBeTruthy()
   cleanup()
 
   const notesFetch = renderPage({}, { path: '/?focus=notes&page=5' })
-  expect(await screen.findByRole('heading', { level: 1, name: 'Notes' })).toBeTruthy()
+  expect(await screen.findByRole('tree', { name: 'Notes' })).toBeTruthy()
   await waitFor(() => expect(notesFetch).toHaveBeenCalledWith('/api/notes/pages/5', expect.anything()))
 })
 
 test('invalid ids fall back to the panel list; an unknown panel shows the grid', async () => {
   for (const id of ['abc', '0', '-1', '1.5', '1e3', '9999999999']) {
     const fetchMock = renderPage({}, { path: `/?focus=flashcards&deck=${id}&review=${id}` })
-    expect(await screen.findByRole('heading', { level: 1, name: 'Flashcards' })).toBeTruthy()
-    expect(fetchMock.mock.calls.some(([url]) => url.startsWith('/api/decks/') || url.startsWith('/api/review/'))).toBe(false)
+    expect(await screen.findByRole('navigation', { name: 'Decks' })).toBeTruthy()
+    await screen.findByText('Networking')
+    // The bad id is never sent; the first deck (Spanish, id 1) is shown instead.
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/decks/1', expect.anything()))
+    const deckUrls = fetchMock.mock.calls.map(([url]) => url).filter((u) => u.startsWith('/api/decks/') || u.startsWith('/api/review/'))
+    expect(deckUrls.every((u) => /^\/api\/(decks\/1(\/cards\?status=active)?|review\/cards\?deck_id=1)$/.test(u))).toBe(true)
     cleanup()
   }
   renderPage({}, { path: '/?focus=bogus' })
