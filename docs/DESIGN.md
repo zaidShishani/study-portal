@@ -40,7 +40,7 @@ Components never contain color literals: use theme palette keys (`text.secondary
 | accent-text | 5.02 / 4.64 | 10.43 / 11.22 |
 | hard (error text) | 4.99 / 4.61 | 7.42 / 7.98 |
 
-Light accent `#D97706` is 3.19:1 on white: fills, rings and marks only, never text.
+Light accent `#D97706` is 3.19:1 on white and 2.94:1 on canvas: fills and marks only, never text. The focus ring therefore uses accent-text (`#B45309`, ≥ 4.6:1 on both; dark uses `#FBBF24`).
 
 ## Accent rules
 Amber only for: today, overdue, progress, active tab/selection, unread, focus ring. Never large backgrounds. Links keep text color with an amber underline.
@@ -83,4 +83,4 @@ Tokens in `motion` (`tokens.ts`); MUI `transitions` use them.
 - `prefers-reduced-motion: reduce`: opacity only, ≤80ms (globally transitions/animations collapse to ~0ms).
 
 ## Third-party widgets
-FullCalendar reads its `--fc-*` CSS variables, which the theme sets on `:root` from tokens (borders, page bg, today = line, own events = solid text color, active button = accent). Derived calendar items (cards due / problem due / checkpoint) use a soft tint of their meaning color with text-color labels; the legend uses 6px dots. MUI X picker fields (`MuiPickersOutlinedInput`) get the same border/focus rules as regular inputs. Markdown code blocks use the line color + Geist Mono.
+FullCalendar reads its `--fc-*` CSS variables, and its type is pulled onto the scale (toolbar title 14/600, headers 500, events 12px), which the theme sets on `:root` from tokens (borders, page bg, today = line, own events = solid text color, active button = accent). Derived calendar items (cards due / problem due / checkpoint) use a soft tint of their meaning color with text-color labels; the legend uses 6px dots. MUI X picker fields (`MuiPickersOutlinedInput`) get the same border/focus rules as regular inputs. Markdown code blocks use the line color + Geist Mono.
