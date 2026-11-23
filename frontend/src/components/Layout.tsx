@@ -1,102 +1,119 @@
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet } from 'react-router-dom'
 import {
   AppBar,
   Box,
-  Drawer,
+  Button,
   IconButton,
-  List,
-  ListItemButton,
-  ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Toolbar,
+  Tooltip,
   Typography,
   useMediaQuery,
 } from '@mui/material'
-import { useTheme } from '@mui/material/styles'
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
-import CodeIcon from '@mui/icons-material/Code'
-import MapIcon from '@mui/icons-material/Map'
+import { alpha, useTheme } from '@mui/material/styles'
 import MenuIcon from '@mui/icons-material/Menu'
-import NotesIcon from '@mui/icons-material/Notes'
-import StyleIcon from '@mui/icons-material/Style'
-import TodayIcon from '@mui/icons-material/Today'
+import { fonts } from '../theme/tokens'
 import NotificationBell from './NotificationBell'
 
-const DRAWER_WIDTH = 220
-
 const NAV = [
-  { to: '/', label: 'Today', icon: <TodayIcon /> },
-  { to: '/flashcards', label: 'Flashcards', icon: <StyleIcon /> },
-  { to: '/leetcode', label: 'LeetCode', icon: <CodeIcon /> },
-  { to: '/notes', label: 'Notes', icon: <NotesIcon /> },
-  { to: '/roadmaps', label: 'Roadmaps', icon: <MapIcon /> },
-  { to: '/calendar', label: 'Calendar', icon: <CalendarMonthIcon /> },
+  { to: '/', label: 'Home' },
+  { to: '/settings', label: 'Settings' },
 ]
+const LOGOUT_HINT = 'Available once login is set up'
 
 export default function Layout() {
   const theme = useTheme()
   // noSsr: use the real width on first render; defaultMatches: desktop when matchMedia is missing (jsdom).
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'), {
-    noSsr: true,
-    defaultMatches: true,
-  })
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const isWide = useMediaQuery(theme.breakpoints.up('sm'), { noSsr: true, defaultMatches: true })
+  const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
+  const closeMenu = () => setMenuAnchor(null)
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <AppBar position="fixed" sx={{ zIndex: theme.zIndex.drawer + 1 }}>
-        <Toolbar>
-          {!isDesktop && (
-            <IconButton
-              color="inherit"
-              edge="start"
-              aria-label="Open navigation"
-              onClick={() => setMobileOpen(true)}
-              sx={{ mr: 2 }}
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+    <>
+      <AppBar
+        position="sticky"
+        sx={{ bgcolor: alpha(theme.palette.background.default, 0.8), backdropFilter: 'blur(8px)' }}
+      >
+        <Toolbar sx={{ width: '100%', maxWidth: 1200, mx: 'auto', gap: 1, px: { xs: 3, md: 4 } }}>
+          <Typography
+            component={Link}
+            to="/"
+            sx={{ fontFamily: fonts.heading, fontSize: '1.5rem', letterSpacing: '-0.02em', textDecoration: 'none', mr: 'auto' }}
+          >
             Study Portal
           </Typography>
+          {isWide ? (
+            <>
+              <Box component="nav" aria-label="Main" sx={{ display: 'flex', gap: 0.5 }}>
+                {NAV.map(({ to, label }) => (
+                  <Button
+                    key={to}
+                    component={NavLink}
+                    to={to}
+                    end
+                    color="inherit"
+                    sx={{
+                      color: 'text.secondary',
+                      // MUI Button drops the underline on hover; keep the active marker.
+                      '&.active, &.active:hover': {
+                        color: 'text.primary',
+                        textDecoration: 'underline',
+                        textDecorationColor: theme.palette.secondary.main,
+                        textDecorationThickness: 2,
+                        textUnderlineOffset: 6,
+                      },
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </Box>
+              <Tooltip title={LOGOUT_HINT} describeChild>
+                {/* A disabled button can't take focus or hover; the wrapper lets the tooltip show for keyboard users. */}
+                <span tabIndex={0}>
+                  <Button disabled>Logout</Button>
+                </span>
+              </Tooltip>
+            </>
+          ) : (
+            <>
+              <IconButton
+                color="inherit"
+                aria-label="Open menu"
+                aria-haspopup="menu"
+                aria-expanded={menuAnchor ? 'true' : undefined}
+                onClick={(e) => setMenuAnchor(e.currentTarget)}
+              >
+                <MenuIcon />
+              </IconButton>
+              <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={closeMenu}>
+                {NAV.map(({ to, label }) => (
+                  <MenuItem
+                    key={to}
+                    component={NavLink}
+                    to={to}
+                    end
+                    onClick={closeMenu}
+                    sx={{ '&.active': { bgcolor: 'action.selected' } }}
+                  >
+                    {label}
+                  </MenuItem>
+                ))}
+                <MenuItem disabled>
+                  <ListItemText primary="Logout" secondary={LOGOUT_HINT} />
+                </MenuItem>
+              </Menu>
+            </>
+          )}
           <NotificationBell />
         </Toolbar>
       </AppBar>
-      <Drawer
-        variant={isDesktop ? 'permanent' : 'temporary'}
-        open={isDesktop || mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        sx={{
-          width: DRAWER_WIDTH,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' },
-        }}
-      >
-        <Toolbar />
-        <nav aria-label="Main">
-          <List>
-            {NAV.map(({ to, label, icon }) => (
-              <ListItemButton
-                key={to}
-                component={NavLink}
-                to={to}
-                end={to === '/'}
-                onClick={() => setMobileOpen(false)}
-                sx={{ '&.active': { bgcolor: 'action.selected' } }}
-              >
-                <ListItemIcon>{icon}</ListItemIcon>
-                <ListItemText primary={label} />
-              </ListItemButton>
-            ))}
-          </List>
-        </nav>
-      </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, p: 3, minWidth: 0 }}>
-        <Toolbar />
+      <Box component="main" sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 3, md: 4 }, py: { xs: 3, md: 4 } }}>
         <Outlet />
       </Box>
-    </Box>
+    </>
   )
 }

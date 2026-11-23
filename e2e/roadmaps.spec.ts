@@ -34,6 +34,6 @@ test('create roadmap, add 3 checkpoints, check one, reorder persists after reloa
   await expect(items.nth(2)).toContainText('Second')
   await expect(page.getByRole('checkbox', { name: 'Done: First' })).toBeChecked()
 
-  await page.getByRole('link', { name: 'Roadmaps' }).click()
+  await page.goto('/roadmaps')
   await expect(page.getByRole('link', { name: new RegExp(title) })).toContainText('1/3 · 33%')
 })
