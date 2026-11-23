@@ -148,13 +148,13 @@ function LeetCode({ today, onError }: { today?: string; onError: OnError }) {
         <Box component={Link} to={focusUrl({ focus: 'leetcode', problem: p.id })} sx={rowLink}>
           {p.title}
         </Box>
-        <Box component="span" sx={{ width: 76, typography: 'body2', color: 'text.secondary' }}>
+        <Box component="span" sx={{ width: 76, typography: 'body2', color: 'text.secondary', display: { xs: 'none', sm: 'block' } }}>
           <DifficultyDot difficulty={p.difficulty} />
         </Box>
         <Box component="span" sx={{ width: 120, typography: 'body2', color: 'text.secondary', display: { xs: 'none', sm: 'block' } }}>
           {p.pattern}
         </Box>
-        <Box component="span" sx={{ width: 64, typography: 'body2', color: due === 'Overdue' || due === 'Today' ? 'secondary.dark' : 'text.secondary' }}>
+        <Box component="span" sx={{ width: 64, typography: 'body2', display: { xs: 'none', sm: 'block' }, color: due === 'Overdue' || due === 'Today' ? 'secondary.dark' : 'text.secondary' }}>
           {due}
         </Box>
         <ButtonGroup
@@ -429,7 +429,7 @@ export default function HomePage() {
           <Box sx={{ minHeight: 0, overflow: { sm: 'auto' } }}>
             <Flashcards />
           </Box>
-          <Box sx={{ minHeight: 0, overflow: { sm: 'auto' }, borderLeft: { sm: 1 }, borderTop: { xs: 1, sm: 0 }, borderColor: 'divider' }}>
+          <Box sx={{ minHeight: 0, overflow: { sm: 'auto' }, borderStyle: 'solid', borderColor: 'divider', borderWidth: { xs: '1px 0 0', sm: '0 0 0 1px' } }}>
             <QuickAddCard decks={decks.data ?? []} onError={onError} />
           </Box>
         </Box>
@@ -550,8 +550,9 @@ export default function HomePage() {
               sx={{
                 order: CELLS[name].order,
                 minWidth: 0,
-                // One column: cards get a fixed 280px (lists scroll); the calendar stacks month over agenda, so it grows.
-                height: expanded || name === 'calendar' ? 'auto' : 280,
+                // One column: cards get a fixed 280px (lists scroll); the calendar (month over agenda) and flashcards (list over
+                // quick add) stack, so they grow.
+                height: expanded || name === 'calendar' || name === 'flashcards' ? 'auto' : 280,
                 // Another panel is expanded: gone in one column; hidden (still holding its cell) in the grid.
                 display: focus && !expanded ? 'none' : 'block',
                 [WIDE]: {
