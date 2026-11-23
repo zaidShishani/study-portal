@@ -40,7 +40,8 @@ export default function NotificationBell() {
         aria-expanded={anchor ? 'true' : undefined}
         onClick={(e) => setAnchor(e.currentTarget)}
       >
-        <Badge badgeContent={count} color="secondary" invisible={data.length === 0}>
+        {/* Amber dot only; the exact count is in the aria-label. */}
+        <Badge variant="dot" color="secondary" invisible={data.length === 0}>
           <NotificationsIcon />
         </Badge>
       </IconButton>

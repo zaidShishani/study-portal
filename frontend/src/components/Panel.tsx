@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
-import { Chip, IconButton, Paper, Stack, Typography } from '@mui/material'
+import { IconButton, Paper, Stack, Typography } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import OpenInFullIcon from '@mui/icons-material/OpenInFull'
+import { fonts } from '../theme/tokens'
 
 type Props = {
   title: string
@@ -34,7 +35,7 @@ export default function Panel({ title, count, onExpand, onBack, order, children 
           <Typography id={`panel-${name}`} variant="h5" component="h2" tabIndex={-1} sx={{ mr: 'auto', '&:focus': { outline: 'none' } }}>
             {title}
           </Typography>
-          {count !== undefined && <Chip size="small" label={count} />}
+          {count !== undefined && <Typography variant="body2" sx={{ fontFamily: fonts.mono, color: 'text.secondary' }}>{count}</Typography>}
           {onExpand && (
             <IconButton aria-label={`Expand ${title}`} onClick={onExpand} size="small" sx={{ mr: -0.5 }}>
               <OpenInFullIcon fontSize="small" />

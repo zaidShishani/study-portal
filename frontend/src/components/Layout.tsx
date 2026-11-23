@@ -13,9 +13,8 @@ import {
   Typography,
   useMediaQuery,
 } from '@mui/material'
-import { alpha, useTheme } from '@mui/material/styles'
+import { useTheme } from '@mui/material/styles'
 import MenuIcon from '@mui/icons-material/Menu'
-import { fonts } from '../theme/tokens'
 import NotificationBell from './NotificationBell'
 
 const NAV = [
@@ -35,15 +34,12 @@ export default function Layout() {
 
   return (
     <>
-      <AppBar
-        position="sticky"
-        sx={{ bgcolor: alpha(theme.palette.background.default, 0.8), backdropFilter: 'blur(8px)' }}
-      >
+      <AppBar position="sticky">
         <Toolbar sx={{ width: '100%', maxWidth: 1200, mx: 'auto', gap: 1, px: { xs: 3, md: 4 } }}>
           <Typography
             component={Link}
             to="/"
-            sx={{ fontFamily: fonts.heading, fontSize: '1.5rem', letterSpacing: '-0.02em', textDecoration: 'none', mr: 'auto' }}
+            sx={{ fontSize: 15, fontWeight: 600, textDecoration: 'none', mr: 'auto' }}
           >
             Study Portal
           </Typography>

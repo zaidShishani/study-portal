@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type ReactNode } from 'react'
-import { Box, Button, Chip, CircularProgress, List, ListItemButton, ListItemText, Stack, Typography } from '@mui/material'
+import { Box, Button, CircularProgress, List, ListItemButton, ListItemText, Stack, Typography } from '@mui/material'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import CalendarCard from '../components/CalendarCard'
 import Panel from '../components/Panel'
@@ -7,7 +7,8 @@ import RoadmapProgress from '../components/RoadmapProgress'
 import { useToday } from '../hooks/useDashboard'
 import { useCreatePage, useRecentPages } from '../hooks/useNotes'
 import { focusUrl, useFocus, type PanelName } from '../hooks/useFocus'
-import { DIFFICULTY_COLOR } from '../types'
+import DifficultyDot from '../components/DifficultyDot'
+import { fonts } from '../theme/tokens'
 import CalendarPage from './CalendarPage'
 import DeckPage from './DeckPage'
 import FlashcardsPage from './FlashcardsPage'
@@ -182,7 +183,7 @@ export default function HomePage() {
                   {data.decks.slice(0, MAX_ROWS).map((d) => (
                     <ListItemButton key={d.id} component={Link} to={focusUrl({ focus: 'flashcards', review: d.id })}>
                       <ListItemText sx={wrap} primary={d.title} />
-                      <Chip size="small" label={d.due_count} />
+                      <Typography variant="body2" sx={{ fontFamily: fonts.mono, color: 'text.secondary' }}>{d.due_count}</Typography>
                     </ListItemButton>
                   ))}
                 </List>
@@ -208,8 +209,8 @@ export default function HomePage() {
                   <ListItemButton key={p.id} component={Link} to={focusUrl({ focus: 'leetcode', problem: p.id })}>
                     <ListItemText sx={wrap} primary={p.title} />
                     <Stack direction="row" spacing={1}>
-                      {p.due_date < data.date && <Chip size="small" label="Overdue" color="error" variant="outlined" />}
-                      <Chip size="small" label={p.difficulty} color={DIFFICULTY_COLOR[p.difficulty]} />
+                      {p.due_date < data.date && <Typography variant="body2" color="secondary.dark">Overdue</Typography>}
+                      <DifficultyDot difficulty={p.difficulty} />
                     </Stack>
                   </ListItemButton>
                 ))}

@@ -2,7 +2,6 @@ import { useState, type MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Button,
-  Chip,
   IconButton,
   Link,
   Snackbar,
@@ -22,11 +21,12 @@ import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import ConfirmDialog from '../components/ConfirmDialog'
+import DifficultyDot from '../components/DifficultyDot'
 import ProblemDialog from '../components/ProblemDialog'
 import { focusUrl } from '../hooks/useFocus'
 import { isHttpUrl, type ProblemFilters } from '../api/problems'
 import { useCreateProblem, useDeleteProblem, useProblems, useUpdateProblem } from '../hooks/useProblems'
-import { DIFFICULTIES, DIFFICULTY_COLOR, PATTERNS, type Difficulty, type Pattern, type Problem, type ProblemInput, type ProblemStatus } from '../types'
+import { DIFFICULTIES, PATTERNS, type Difficulty, type Pattern, type Problem, type ProblemInput, type ProblemStatus } from '../types'
 
 const STATUSES: { value: ProblemStatus; label: string }[] = [
   { value: 'due', label: 'Due' },
@@ -168,19 +168,16 @@ export default function LeetCodePage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Chip size="small" label={p.difficulty} color={DIFFICULTY_COLOR[p.difficulty]} />
+                      <DifficultyDot difficulty={p.difficulty} />
                     </TableCell>
                     <TableCell>{p.pattern}</TableCell>
                     <TableCell>{p.stage}</TableCell>
                     <TableCell>
                       {p.retired_at ? 'Retired' : (p.due_date ?? '—')}
                       {due && (
-                        <Chip
-                          size="small"
-                          sx={{ ml: 1 }}
-                          label={p.due_date! < today ? 'Overdue' : 'Due'}
-                          color={p.due_date! < today ? 'error' : 'warning'}
-                        />
+                        <Typography component="span" variant="body2" color={p.due_date! < today ? 'secondary.dark' : 'text.secondary'} sx={{ ml: 1 }}>
+                          {p.due_date! < today ? 'Overdue' : 'Due'}
+                        </Typography>
                       )}
                     </TableCell>
                     <TableCell>{p.review_count}</TableCell>
