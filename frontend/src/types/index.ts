@@ -69,6 +69,8 @@ export type NotePageItem = {
   updated_at: string
 }
 
+export type RecentPage = NotePageItem & { folder_name: string | null }
+
 export type NotePage = NotePageItem & {
   content: string
   created_at: string

@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 
-export const PANELS = ['flashcards', 'leetcode', 'roadmaps'] as const
+export const PANELS = ['flashcards', 'leetcode', 'roadmaps', 'calendar', 'notes'] as const
 export type PanelName = (typeof PANELS)[number]
 
 // Ids come from the URL: positive integers only, at most 9 digits so they fit the API's int columns.
@@ -20,5 +20,6 @@ export function useFocus() {
     review: review === 'all' ? ('all' as const) : parseId(review),
     problem: parseId(params.get('problem')),
     roadmap: parseId(params.get('roadmap')),
+    page: parseId(params.get('page')),
   }
 }

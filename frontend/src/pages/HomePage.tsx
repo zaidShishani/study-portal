@@ -1,31 +1,53 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Box, Button, Chip, CircularProgress, List, ListItemButton, ListItemText, Stack, Typography } from '@mui/material'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
+import CalendarCard from '../components/CalendarCard'
 import Panel from '../components/Panel'
 import RoadmapProgress from '../components/RoadmapProgress'
 import { useToday } from '../hooks/useDashboard'
+import { useCreatePage, useRecentPages } from '../hooks/useNotes'
 import { focusUrl, useFocus, type PanelName } from '../hooks/useFocus'
 import { DIFFICULTY_COLOR } from '../types'
+import CalendarPage from './CalendarPage'
 import DeckPage from './DeckPage'
 import FlashcardsPage from './FlashcardsPage'
 import LeetCodePage from './LeetCodePage'
+import NotesPage from './NotesPage'
 import ProblemPage from './ProblemPage'
 import ReviewPage from './ReviewPage'
 import RoadmapPage from './RoadmapPage'
 import RoadmapsPage from './RoadmapsPage'
 
-const TITLES: Record<PanelName, string> = { flashcards: 'Flashcards', leetcode: 'LeetCode', roadmaps: 'Roadmaps' }
+const TITLES: Record<PanelName, string> = {
+  flashcards: 'Flashcards',
+  leetcode: 'LeetCode',
+  roadmaps: 'Roadmaps',
+  calendar: 'Calendar',
+  notes: 'Notes',
+}
 const wrap = { minWidth: 0, overflowWrap: 'anywhere' }
+
+const relative = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto', style: 'narrow' })
+const UNITS = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]] as const
+
+/** "3h ago", "yesterday", "now". */
+function timeAgo(iso: string, now = Date.now()) {
+  const s = (new Date(iso).getTime() - now) / 1000
+  const [unit, size] = UNITS.find(([, size]) => Math.abs(s) >= size) ?? ['second', 1]
+  return unit === 'second' ? relative.format(0, 'second') : relative.format(Math.trunc(s / size), unit)
+}
 
 function Empty({ children }: { children: ReactNode }) {
   return <Typography color="text.secondary">{children}</Typography>
 }
 
 export default function HomePage() {
-  const { focus, deck, review, problem, roadmap } = useFocus()
+  const { focus, deck, review, problem, roadmap, page } = useFocus()
   const { search } = useLocation()
   const navigate = useNavigate()
   const { data, error, isPending } = useToday()
+  const recent = useRecentPages()
+  const createPage = useCreatePage()
   const focusBox = useRef<HTMLDivElement>(null)
   const lastFocus = useRef(focus)
   const lastSearch = useRef(search)
@@ -69,6 +91,8 @@ export default function HomePage() {
         ),
       leetcode: problem ? <ProblemPage problemId={problem} /> : <LeetCodePage />,
       roadmaps: roadmap ? <RoadmapPage roadmapId={roadmap} /> : <RoadmapsPage />,
+      calendar: <CalendarPage />,
+      notes: <NotesPage initialPageId={page} />,
     }[focus]
     return (
       <Box ref={focusBox} tabIndex={-1} sx={{ outline: 'none', '& h1:focus': { outline: 'none' } }}>
@@ -135,8 +159,9 @@ export default function HomePage() {
           )}
         </Panel>
 
-        <Panel title="Calendar">
-          <Empty>Coming soon</Empty>
+        <Panel title="Calendar" onExpand={expand('calendar')}>
+          {loading}
+          {data && <CalendarCard today={data.date} />}
         </Panel>
 
         <Panel title="LeetCode" count={data?.problems_due.length} onExpand={expand('leetcode')}>
@@ -157,8 +182,32 @@ export default function HomePage() {
           )}
         </Panel>
 
-        <Panel title="Notes">
-          <Empty>Coming soon</Empty>
+        <Panel title="Notes" onExpand={expand('notes')}>
+          {recent.isPending && <CircularProgress aria-label="Loading" size={24} />}
+          {recent.error && <Typography color="error">{recent.error.message}</Typography>}
+          {recent.data?.length === 0 && <Empty>No pages yet.</Empty>}
+          {recent.data && (
+            <List dense sx={{ mx: -2 }}>
+              {recent.data.map((p) => (
+                <ListItemButton key={p.id} component={Link} to={focusUrl({ focus: 'notes', page: p.id })}>
+                  <ListItemText sx={wrap} primary={p.title} secondary={`${p.folder_name ?? 'Root'} · ${timeAgo(p.updated_at)}`} />
+                </ListItemButton>
+              ))}
+            </List>
+          )}
+          {createPage.error && <Typography color="error">{createPage.error.message}</Typography>}
+          <Button
+            variant="contained"
+            disabled={createPage.isPending}
+            onClick={() =>
+              createPage.mutate(
+                { title: 'Untitled', folder_id: null },
+                { onSuccess: (p) => navigate(focusUrl({ focus: 'notes', page: p.id })) },
+              )
+            }
+          >
+            New page
+          </Button>
         </Panel>
 
         <Panel title="Roadmaps" count={data?.roadmaps.length} onExpand={expand('roadmaps')}>
