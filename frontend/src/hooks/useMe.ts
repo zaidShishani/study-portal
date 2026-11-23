@@ -7,7 +7,11 @@ export function useMe() {
   const query = useQuery({ queryKey: ['me'], queryFn: getMe, retry: false })
   const { mutate } = useMutation({
     mutationFn: updateMe,
-    onSuccess: (me) => queryClient.setQueryData(['me'], me),
+    onSuccess: (me) => {
+      queryClient.setQueryData(['me'], me)
+      // The calendar may have loaded with the old timezone's dates before this PATCH landed.
+      queryClient.invalidateQueries({ queryKey: ['calendar'] })
+    },
     onError: (err) => console.warn('Could not save timezone', err),
   })
   const synced = useRef(false)
