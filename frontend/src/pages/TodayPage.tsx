@@ -65,7 +65,7 @@ export default function TodayPage() {
           <List dense>
             {data.decks.map((d) => (
               <ListItemButton key={d.id} component={Link} to={`/flashcards/${d.id}/review`}>
-                <ListItemText primary={d.title} />
+                <ListItemText sx={{ minWidth: 0, overflowWrap: 'anywhere' }} primary={d.title} />
                 <Chip size="small" label={d.due_count} />
               </ListItemButton>
             ))}
@@ -79,7 +79,7 @@ export default function TodayPage() {
           <List dense>
             {data.problems_due.map((p) => (
               <ListItemButton key={p.id} component={Link} to={`/leetcode/${p.id}`}>
-                <ListItemText primary={p.title} />
+                <ListItemText sx={{ minWidth: 0, overflowWrap: 'anywhere' }} primary={p.title} />
                 <Stack direction="row" spacing={1}>
                   {p.due_date < data.date && <Chip size="small" label="Overdue" color="error" variant="outlined" />}
                   <Chip size="small" label={p.difficulty} color={DIFFICULTY_COLOR[p.difficulty]} />
@@ -94,6 +94,7 @@ export default function TodayPage() {
             {data.events_today.map((e) => (
               <ListItemButton key={`${e.event_id}-${e.start}`} component={Link} to="/calendar">
                 <ListItemText
+                  sx={{ minWidth: 0, overflowWrap: 'anywhere' }}
                   primary={e.title}
                   secondary={e.all_day ? 'All day' : e.end ? `${time(e.start)} – ${time(e.end)}` : time(e.start)}
                 />
@@ -106,7 +107,7 @@ export default function TodayPage() {
           <List dense>
             {data.roadmaps.map((r) => (
               <ListItemButton key={r.id} component={Link} to={`/roadmaps/${r.id}`} sx={{ display: 'block' }}>
-                <ListItemText primary={r.title} />
+                <ListItemText sx={{ minWidth: 0, overflowWrap: 'anywhere' }} primary={r.title} />
                 {r.total ? (
                   <RoadmapProgress done={r.done} total={r.total} />
                 ) : (

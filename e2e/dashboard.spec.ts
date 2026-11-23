@@ -16,7 +16,9 @@ test('seeded card, problem, event and roadmap show on Today; Start review opens 
     difficulty: 'Hard',
     pattern: 'Graph',
   })
+  // Local noon is inside today whenever the test runs; the browser and user share this timezone.
   const start = new Date()
+  start.setHours(12, 0, 0, 0)
   await post(request, '/api/events', {
     title: `E2E dash event ${tag}`,
     start_at: start.toISOString(),

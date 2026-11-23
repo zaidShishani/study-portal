@@ -27,7 +27,6 @@ import { isHttpUrl, type ProblemFilters } from '../api/problems'
 import { useCreateProblem, useDeleteProblem, useProblems, useUpdateProblem } from '../hooks/useProblems'
 import { DIFFICULTIES, DIFFICULTY_COLOR, PATTERNS, type Difficulty, type Pattern, type Problem, type ProblemInput, type ProblemStatus } from '../types'
 
-
 const STATUSES: { value: ProblemStatus; label: string }[] = [
   { value: 'due', label: 'Due' },
   { value: 'active', label: 'Active' },

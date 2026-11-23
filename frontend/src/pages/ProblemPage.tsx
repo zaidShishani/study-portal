@@ -16,7 +16,6 @@ import {
 } from '../hooks/useProblems'
 import { DIFFICULTY_COLOR, RESULT_LABELS, type ProblemInput } from '../types'
 
-
 export default function ProblemPage() {
   const { problemId = '' } = useParams()
   const navigate = useNavigate()
