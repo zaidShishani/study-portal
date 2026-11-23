@@ -59,16 +59,24 @@ const recent: RecentPage[] = [
   { id: 6, title: 'Scratch', folder_id: null, folder_name: null, updated_at: ago(1000) },
 ]
 
-type Data = { decks: unknown[]; problems: unknown[]; roadmaps: unknown[]; cal: CalendarData; pages: RecentPage[] }
-const full: Data = { decks, problems, roadmaps, cal: noCalendar, pages: [] }
-const empty: Data = { decks: [], problems: [], roadmaps: [], cal: noCalendar, pages: [] }
+type Data = { decks: unknown[]; problems: unknown[]; roadmaps: unknown[]; cal: CalendarData; pages: RecentPage[]; folders: unknown[] }
+const full: Data = { decks, problems, roadmaps, cal: noCalendar, pages: [], folders: [] }
+const empty: Data = { decks: [], problems: [], roadmaps: [], cal: noCalendar, pages: [], folders: [] }
+const isWrite = (init?: RequestInit) => !!init?.method && init.method !== 'GET'
 
 // Every other endpoint answers 404 so focus views render their not-found state.
-function renderPage(data: Partial<Data> = {}, { path = '/', status = 200 } = {}) {
+// writeStatus fails only POST/PATCH (the inline actions); status fails everything.
+function renderPage(data: Partial<Data> = {}, { path = '/', status = 200, writeStatus = 200 } = {}) {
   const d = { ...full, ...data }
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const roadmap = /^\/api\/roadmaps\/(\d+)$/.exec(url)?.[1] as '3' | '4' | undefined
     if (status !== 200) return Response.json({ detail: 'Boom <b>x</b>' }, { status })
+    if (isWrite(init) && writeStatus !== 200) return Response.json({ detail: 'Write failed' }, { status: writeStatus })
+    if (init?.method === 'POST' && /^\/api\/decks\/\d+\/cards$/.test(url)) return Response.json({ id: 99 }, { status: 201 })
+    if (init?.method === 'POST' && /^\/api\/problems\/\d+\/attempt$/.test(url)) return Response.json(problems[0])
+    if (init?.method === 'PATCH' && url.startsWith('/api/checkpoints/')) return Response.json({})
+    if (init?.method === 'POST' && url === '/api/roadmaps/3/checkpoints') return Response.json({}, { status: 201 })
+    if (init?.method === 'POST' && url === '/api/decks') return Response.json({ id: 9 }, { status: 201 })
     if (url === '/api/dashboard/today') return Response.json(dashboard)
     if (url === '/api/decks') return Response.json(d.decks)
     if (url.startsWith('/api/problems?')) return Response.json(url.includes('status=due') ? d.problems : [])
@@ -78,7 +86,7 @@ function renderPage(data: Partial<Data> = {}, { path = '/', status = 200 } = {})
     if (url === '/api/notes/pages/recent?limit=20') return Response.json(d.pages)
     if (url === '/api/notes/pages' && init?.method === 'POST')
       return Response.json({ id: 42, title: 'Untitled', folder_id: null, content: '' }, { status: 201 })
-    if (url === '/api/notes/folders') return Response.json([])
+    if (url === '/api/notes/folders') return Response.json(d.folders)
     if (url === '/api/notes/pages') return Response.json([note5])
     if (url === '/api/notes/pages/5') return Response.json(note5)
     if (url.startsWith('/api/review/')) return Response.json([])
@@ -101,6 +109,12 @@ const panel = (name: string) => screen.getByRole('region', { name })
 const link = (scope: HTMLElement, name: string | RegExp) => within(scope).getByRole('link', { name })
 const href = (scope: HTMLElement, name: string | RegExp) => link(scope, name).getAttribute('href')
 const search = () => screen.getByRole('status', { name: 'search' }).textContent
+// Rows with controls: the title is the link, the row is its parent.
+const row = (scope: HTMLElement, name: string | RegExp) => link(scope, name).parentElement!
+const writes = (fetchMock: ReturnType<typeof renderPage>) => fetchMock.mock.calls.filter(([, init]) => isWrite(init))
+const body = (call: unknown[]) => JSON.parse(String((call[1] as RequestInit).body))
+const gets = (fetchMock: ReturnType<typeof renderPage>, url: string) =>
+  fetchMock.mock.calls.filter(([u, init]) => u === url && !isWrite(init)).length
 
 test('panels render from the API: all decks, due problems, roadmap checkpoints; no page title or date', async () => {
   const fetchMock = renderPage()
@@ -108,20 +122,24 @@ test('panels render from the API: all decks, due problems, roadmap checkpoints; 
   expect(await within(cards).findAllByText('3 due')).toHaveLength(2)
   expect(within(cards).getByText('0 due')).toBeTruthy()
   expect(within(cards).getByRole('heading', { level: 2 }).parentElement!.textContent).toContain('3 due')
-  // A deck with cards due opens its review; one without opens the deck.
-  expect(href(cards, /Spanish/)).toBe('/?focus=flashcards&review=1')
-  expect(href(cards, /Networking/)).toBe('/?focus=flashcards&deck=2')
-  const start = link(cards, 'Start review')
+  // The title opens the deck; Review opens its review (disabled with nothing due).
+  expect(href(cards, 'Spanish')).toBe('/?focus=flashcards&deck=1')
+  expect(href(cards, 'Review Spanish')).toBe('/?focus=flashcards&review=1')
+  expect(link(cards, 'Review Spanish').getAttribute('aria-disabled')).toBeNull()
+  expect(within(cards).queryByRole('link', { name: 'Review Networking' })).toBeNull()
+  expect((within(cards).getByRole('button', { name: 'Review Networking' }) as HTMLButtonElement).disabled).toBe(true)
+  const start = link(cards, 'Review all')
   expect(start.getAttribute('href')).toBe('/?focus=flashcards&review=all')
   expect(start.getAttribute('aria-disabled')).toBeNull()
+  expect(within(cards).getByRole('button', { name: 'New deck' })).toBeTruthy()
 
   const leet = panel('LeetCode')
   expect(fetchMock).toHaveBeenCalledWith('/api/problems?status=due', expect.anything())
   expect(href(leet, /Two Sum/)).toBe('/?focus=leetcode&problem=7')
-  expect(await within(link(leet, /Two Sum/)).findByText('Overdue')).toBeTruthy()
-  expect(within(link(leet, /LRU Cache/)).getByText('Today')).toBeTruthy()
-  expect(within(link(leet, /LRU Cache/)).getByText('Medium')).toBeTruthy()
-  expect(within(link(leet, /LRU Cache/)).getByText('Linked List')).toBeTruthy()
+  expect(await within(row(leet, /Two Sum/)).findByText('Overdue')).toBeTruthy()
+  expect(within(row(leet, /LRU Cache/)).getByText('Today')).toBeTruthy()
+  expect(within(row(leet, /LRU Cache/)).getByText('Medium')).toBeTruthy()
+  expect(within(row(leet, /LRU Cache/)).getByText('Linked List')).toBeTruthy()
   expect(within(leet).getByText('2 due')).toBeTruthy()
 
   const road = panel('Roadmaps')
@@ -130,7 +148,7 @@ test('panels render from the API: all decks, due problems, roadmap checkpoints; 
   expect(within(road).getByText('1 / 2')).toBeTruthy()
   expect(within(road).getByRole('progressbar', { name: 'Backend progress' })).toBeTruthy()
   expect((within(road).getByRole('checkbox', { name: 'HTTP basics' }) as HTMLInputElement).checked).toBe(true)
-  expect(within(link(road, /HTTP basics/)).getByText('Done')).toBeTruthy()
+  expect(within(row(road, /HTTP basics/)).getByText('Done')).toBeTruthy()
   expect(href(road, /SQL joins/)).toBe('/?focus=roadmaps&roadmap=3')
 
   fireEvent.click(within(road).getByRole('button', { name: 'System design' }))
@@ -208,10 +226,10 @@ test('a nested view whose h1 waits for data gets focus once the h1 appears', asy
   await waitFor(() => expect(document.activeElement).toBe(h1))
 })
 
-test('empty states and Start review disabled at 0', async () => {
+test('empty states and Review all disabled at 0', async () => {
   renderPage(empty)
   expect(await screen.findByText('No decks yet.')).toBeTruthy()
-  expect(link(panel('Flashcards'), 'Start review').getAttribute('aria-disabled')).toBe('true')
+  expect(link(panel('Flashcards'), 'Review all').getAttribute('aria-disabled')).toBe('true')
   expect(await screen.findByText('No problems due.')).toBeTruthy()
   expect(await screen.findByText('No roadmaps yet.')).toBeTruthy()
   expect(await screen.findByText('No pages yet.')).toBeTruthy()
@@ -322,4 +340,142 @@ test('leaving the notes view with unsaved edits asks first (collapse and Escape)
   confirm.mockReturnValue(true)
   fireEvent.click(screen.getByRole('button', { name: 'Collapse Notes' }))
   expect(search()).toBe('')
+})
+
+test('quick add card: validates inline, posts to the chosen deck once, clears, refreshes decks and calendar', async () => {
+  const fetchMock = renderPage()
+  const form = await screen.findByRole('form', { name: 'Quick add card' })
+  const deck = within(form).getByRole('combobox', { name: 'Deck' }) as HTMLSelectElement
+  await waitFor(() => expect(deck.value).toBe('1'))
+  const add = within(form).getByRole('button', { name: 'Add' })
+
+  fireEvent.click(add)
+  expect(within(form).getAllByText('Required')).toHaveLength(2)
+  fireEvent.change(within(form).getByLabelText('Front'), { target: { value: '   ' } })
+  fireEvent.change(within(form).getByLabelText('Back'), { target: { value: 'x'.repeat(10_001) } })
+  fireEvent.click(add)
+  expect(within(form).getByText('Cannot be blank')).toBeTruthy()
+  expect(within(form).getByText('Max 10000 characters')).toBeTruthy()
+  expect(writes(fetchMock)).toHaveLength(0)
+
+  fireEvent.change(deck, { target: { value: '2' } })
+  fireEvent.change(within(form).getByLabelText('Front'), { target: { value: 'hola' } })
+  fireEvent.change(within(form).getByLabelText('Back'), { target: { value: 'hello' } })
+  const decksBefore = gets(fetchMock, '/api/decks')
+  const calBefore = fetchMock.mock.calls.filter(([u]) => u.startsWith('/api/calendar?')).length
+  fireEvent.click(add)
+  fireEvent.click(add)
+  await waitFor(() => expect((within(form).getByLabelText('Front') as HTMLInputElement).value).toBe(''))
+  expect((within(form).getByLabelText('Back') as HTMLInputElement).value).toBe('')
+  expect(writes(fetchMock)).toHaveLength(1)
+  expect(writes(fetchMock)[0][0]).toBe('/api/decks/2/cards')
+  expect(body(writes(fetchMock)[0])).toEqual({ front: 'hola', back: 'hello' })
+  await waitFor(() => expect(gets(fetchMock, '/api/decks')).toBeGreaterThan(decksBefore))
+  await waitFor(() => expect(fetchMock.mock.calls.filter(([u]) => u.startsWith('/api/calendar?')).length).toBeGreaterThan(calBefore))
+})
+
+test('LeetCode row: Solved/Hint/Failed post one attempt per double click and refresh the due list', async () => {
+  const fetchMock = renderPage()
+  const leet = panel('LeetCode')
+  const group = await within(leet).findByRole('group', { name: 'Log attempt: Two Sum' })
+  const before = fetchMock.mock.calls.filter(([u]) => u === '/api/problems?status=due').length
+  fireEvent.click(within(group).getByRole('button', { name: 'Hint' }))
+  fireEvent.click(within(group).getByRole('button', { name: 'Hint' }))
+  await waitFor(() => expect(fetchMock.mock.calls.filter(([u]) => u === '/api/problems?status=due').length).toBeGreaterThan(before))
+  expect(writes(fetchMock)).toHaveLength(1)
+  expect(writes(fetchMock)[0][0]).toBe('/api/problems/7/attempt')
+  expect(body(writes(fetchMock)[0])).toEqual({ result: 'solved_with_hint', minutes: null })
+
+  // Another row is not blocked by the first.
+  fireEvent.click(within(within(leet).getByRole('group', { name: 'Log attempt: LRU Cache' })).getByRole('button', { name: 'Failed' }))
+  fireEvent.click(within(within(leet).getByRole('group', { name: 'Log attempt: Two Sum' })).getByRole('button', { name: 'Solved' }))
+  await waitFor(() => expect(writes(fetchMock)).toHaveLength(3))
+  expect(body(writes(fetchMock)[1])).toEqual({ result: 'failed', minutes: null })
+  expect(body(writes(fetchMock)[2])).toEqual({ result: 'solved', minutes: null })
+})
+
+test('checkpoints: ticking patches done once; Enter adds a trimmed checkpoint to the selected roadmap', async () => {
+  const fetchMock = renderPage()
+  const road = panel('Roadmaps')
+  const box = await within(road).findByRole('checkbox', { name: 'SQL joins' })
+  const before = gets(fetchMock, '/api/roadmaps/3')
+  fireEvent.click(box)
+  fireEvent.click(box)
+  await waitFor(() => expect(gets(fetchMock, '/api/roadmaps/3')).toBeGreaterThan(before))
+  expect(writes(fetchMock)).toHaveLength(1)
+  expect(writes(fetchMock)[0][0]).toBe('/api/checkpoints/2')
+  expect(writes(fetchMock)[0][1]!.method).toBe('PATCH')
+  expect(body(writes(fetchMock)[0])).toEqual({ done: true })
+
+  const input = within(road).getByLabelText('Add a checkpoint') as HTMLInputElement
+  fireEvent.change(input, { target: { value: '   ' } })
+  fireEvent.submit(input)
+  expect(within(road).getByText('Required')).toBeTruthy()
+  fireEvent.change(input, { target: { value: 'y'.repeat(201) } })
+  fireEvent.submit(input)
+  expect(within(road).getByText('Max 200 characters')).toBeTruthy()
+  expect(writes(fetchMock)).toHaveLength(1)
+
+  fireEvent.change(input, { target: { value: '  Caching  ' } })
+  fireEvent.submit(input)
+  fireEvent.submit(input)
+  await waitFor(() => expect(input.value).toBe(''))
+  expect(writes(fetchMock)).toHaveLength(2)
+  expect(writes(fetchMock)[1][0]).toBe('/api/roadmaps/3/checkpoints')
+  expect(body(writes(fetchMock)[1])).toEqual({ title: 'Caching', description: null, target_date: null })
+})
+
+test('quick note: title is the first non-empty line, saved to the chosen folder once; Recent refreshes', async () => {
+  const fetchMock = renderPage({ folders: [{ id: 2, parent_id: null, name: 'Algorithms' }, { id: 3, parent_id: 2, name: 'Graphs' }] })
+  const form = await screen.findByRole('form', { name: 'Quick note' })
+  const save = within(form).getByRole('button', { name: 'Save' })
+  fireEvent.click(save)
+  expect(within(form).getByText('Required')).toBeTruthy()
+  expect(writes(fetchMock)).toHaveLength(0)
+
+  const folder = within(form).getByRole('combobox', { name: 'Save to folder' })
+  expect(await within(folder).findByRole('option', { name: 'Algorithms / Graphs' })).toBeTruthy()
+  expect(within(folder).getByRole('option', { name: 'Root' })).toBeTruthy()
+  fireEvent.change(folder, { target: { value: '3' } })
+  const text = `\n   \n  ${'T'.repeat(250)}  \nsecond line`
+  fireEvent.change(within(form).getByLabelText('Quick note'), { target: { value: text } })
+  const before = gets(fetchMock, '/api/notes/pages/recent?limit=20')
+  fireEvent.click(save)
+  fireEvent.click(save)
+  await waitFor(() => expect((within(form).getByLabelText('Quick note') as HTMLTextAreaElement).value).toBe(''))
+  expect(writes(fetchMock)).toHaveLength(1)
+  expect(writes(fetchMock)[0][0]).toBe('/api/notes/pages')
+  expect(body(writes(fetchMock)[0])).toEqual({ title: 'T'.repeat(200), content: text, folder_id: 3 })
+  await waitFor(() => expect(gets(fetchMock, '/api/notes/pages/recent?limit=20')).toBeGreaterThan(before))
+  expect(search()).toBe('')
+})
+
+test('header actions open the existing dialogs; New deck posts and closes', async () => {
+  const fetchMock = renderPage()
+  fireEvent.click(await within(panel('LeetCode')).findByRole('button', { name: 'New problem' }))
+  expect(within(screen.getByRole('dialog')).getByText('New problem')).toBeTruthy()
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+  const newEvent = within(panel('Calendar')).getByRole('button', { name: 'New event' })
+  await waitFor(() => expect((newEvent as HTMLButtonElement).disabled).toBe(false))
+  fireEvent.click(newEvent)
+  expect(within(screen.getByRole('dialog')).getByText('New event')).toBeTruthy()
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+
+  fireEvent.click(within(panel('Flashcards')).getByRole('button', { name: 'New deck' }))
+  fireEvent.change(within(screen.getByRole('dialog')).getByLabelText('Title'), { target: { value: 'French' } })
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(writes(fetchMock).map(([u, init]) => [u, body([u, init])])).toEqual([['/api/decks', { title: 'French' }]])
+})
+
+test('a failed inline action shows a snackbar and keeps the input', async () => {
+  renderPage({}, { writeStatus: 500 })
+  const form = await screen.findByRole('form', { name: 'Quick note' })
+  fireEvent.change(within(form).getByLabelText('Quick note'), { target: { value: 'keep me' } })
+  fireEvent.click(within(form).getByRole('button', { name: 'Save' }))
+  expect(await screen.findByText('500 Write failed')).toBeTruthy()
+  expect((within(form).getByLabelText('Quick note') as HTMLTextAreaElement).value).toBe('keep me')
 })

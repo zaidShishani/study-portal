@@ -21,7 +21,7 @@ export const listRecentPages = () => api<RecentPage[]>('/notes/pages/recent?limi
 
 export const getPage = (id: number) => api<NotePage>(`/notes/pages/${id}`)
 
-export const createPage = (body: { title: string; folder_id: number | null }) =>
+export const createPage = (body: { title: string; content?: string; folder_id: number | null }) =>
   api<NotePage>('/notes/pages', { method: 'POST', body })
 
 // folder_id: null moves to root; omit it to keep the folder.
