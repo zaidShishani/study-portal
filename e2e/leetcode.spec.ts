@@ -24,7 +24,7 @@ test('create a problem, log failed then solved, and the ladder advances', async 
   await expect(dialog).toBeHidden()
 
   await page.getByRole('link', { name: title, exact: true }).click()
-  await expect(page.getByRole('heading', { level: 3, name: title })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 3, name: title, exact: true })).toBeVisible()
   await expect(detail(page, 'Stage')).toHaveText('0')
 
   // The browser's timezone is synced to the user, so its "tomorrow" is the server's.

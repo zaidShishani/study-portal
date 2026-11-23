@@ -12,7 +12,7 @@ test('expanded flashcards: create deck, add card, review it by keyboard in the i
   await page.getByRole('dialog').getByLabel('Title').fill(title)
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
   await card.getByRole('navigation', { name: 'Decks' }).getByRole('link', { name: new RegExp(title) }).click()
-  await expect(card.getByRole('heading', { level: 3, name: title })).toBeVisible()
+  await expect(card.getByRole('heading', { level: 3, name: title, exact: true })).toBeVisible()
   await expect(card.getByRole('link', { name: new RegExp(title) })).toHaveAttribute('aria-current', 'page')
   const deckId = new URL(page.url()).searchParams.get('deck')
   await expect(card.getByRole('heading', { name: `Review · ${title}` })).toBeVisible()

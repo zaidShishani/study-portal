@@ -28,9 +28,9 @@ test('expand a card in place, open a nested view, then refresh, browser Back and
 
   await page.getByRole('navigation', { name: 'Decks' }).getByText(title).click()
   await at(`/?focus=flashcards&deck=${id}`)
-  await expect(page.getByRole('heading', { level: 3, name: title })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 3, name: title, exact: true })).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('heading', { level: 3, name: title })).toBeVisible()
+  await expect(page.getByRole('heading', { level: 3, name: title, exact: true })).toBeVisible()
 
   await page.goBack()
   await at('/?focus=flashcards')
