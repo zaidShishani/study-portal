@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { Box, Button, Chip, Link, Snackbar, Stack, Typography } from '@mui/material'
+import { Box, Button, Link, Snackbar, Stack, Typography } from '@mui/material'
 import AttemptDialog from '../components/AttemptDialog'
 import ConfirmDialog from '../components/ConfirmDialog'
 import MarkdownView from '../components/MarkdownView'
@@ -14,8 +14,9 @@ import {
   useUnretireProblem,
   useUpdateProblem,
 } from '../hooks/useProblems'
+import DifficultyDot from '../components/DifficultyDot'
 import { focusUrl } from '../hooks/useFocus'
-import { DIFFICULTY_COLOR, RESULT_LABELS, type ProblemInput } from '../types'
+import { RESULT_LABELS, type ProblemInput } from '../types'
 
 export default function ProblemPage({ problemId }: { problemId: number }) {
   const navigate = useNavigate()
@@ -90,7 +91,7 @@ export default function ProblemPage({ problemId }: { problemId: number }) {
               p.title
             )}
           </Typography>
-          <Chip label={p.difficulty} color={DIFFICULTY_COLOR[p.difficulty]} />
+          <DifficultyDot difficulty={p.difficulty} />
         </Stack>
         <Stack direction="row" spacing={1}>
           {p.retired_at ? (

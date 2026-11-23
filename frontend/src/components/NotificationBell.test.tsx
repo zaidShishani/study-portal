@@ -57,16 +57,26 @@ function renderBell() {
 
 const bell = (count: string) => screen.findByRole('button', { name: `Notifications, ${count} unread` })
 
-test('badge shows the unread count', async () => {
+const dot = () => document.querySelector('.MuiBadge-dot:not(.MuiBadge-invisible)')
+
+test('unread shows an amber dot; the count is only in the label', async () => {
   mockApi([note(1), note(2), note(3)])
   renderBell()
-  expect((await bell('3')).textContent).toContain('3')
+  expect((await bell('3')).textContent).not.toContain('3')
+  expect(dot()).toBeTruthy()
 })
 
-test('a full (capped) list shows 50+', async () => {
+test('no unread hides the dot', async () => {
+  mockApi([])
+  renderBell()
+  await bell('0')
+  expect(dot()).toBeNull()
+})
+
+test('a full (capped) list says 50+', async () => {
   mockApi(Array.from({ length: 50 }, (_, i) => note(i + 1)))
   renderBell()
-  expect((await bell('50+')).textContent).toContain('50+')
+  await bell('50+')
 })
 
 test('polls again after 60 s', async () => {

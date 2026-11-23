@@ -41,12 +41,13 @@ export default function CalendarPage() {
   const snackbar = message || (loadError && loadError !== dismissedError ? loadError.message : '')
 
   const { palette } = theme
-  // Own events are solid monochrome; derived items use the semantic pastels (bg + matching text).
+  // Own events are solid monochrome; derived items get a soft tint of their meaning color with plain text.
+  const tint = (c: { main: string; light: string }) => ({ backgroundColor: c.light, borderColor: c.light, textColor: palette.text.primary, dot: c.main })
   const colors = {
-    event: { backgroundColor: palette.primary.main, borderColor: palette.primary.main, textColor: palette.primary.contrastText },
-    cards: { backgroundColor: palette.success.light, borderColor: palette.success.light, textColor: palette.success.main },
-    problem: { backgroundColor: palette.warning.light, borderColor: palette.warning.light, textColor: palette.warning.main },
-    checkpoint: { backgroundColor: palette.info.light, borderColor: palette.info.light, textColor: palette.info.main },
+    event: { backgroundColor: palette.primary.main, borderColor: palette.primary.main, textColor: palette.primary.contrastText, dot: palette.primary.main },
+    cards: tint(palette.success),
+    problem: tint(palette.warning),
+    checkpoint: tint(palette.info),
   }
   const data = calendar.data
   // Derived items are plain all-day entries with a link target; they're never editable.
@@ -118,8 +119,7 @@ export default function CalendarPage() {
           ] as const
         ).map(([key, label]) => (
           <Stack key={key} component="li" direction="row" sx={{ alignItems: 'center', gap: 0.75 }}>
-            {/* A deliberate dot, filled with the item's strong color so pastels stay visible. */}
-            <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: key === 'event' ? colors.event.backgroundColor : colors[key].textColor }} />
+            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: colors[key].dot }} />
             <Typography variant="body2">{label}</Typography>
           </Stack>
         ))}

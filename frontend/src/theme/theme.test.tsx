@@ -4,7 +4,7 @@ import { useTheme } from '@mui/material'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { createAppTheme } from './theme'
 import { ThemeModeProvider, useThemeMode } from './ThemeModeProvider'
-import { radius, tokens } from './tokens'
+import { fonts, radius, tokens } from './tokens'
 
 function stubSystemDark(dark: boolean) {
   vi.stubGlobal('matchMedia', (query: string) => ({
@@ -33,7 +33,24 @@ test.each(['light', 'dark'] as const)('createAppTheme(%s) uses the tokens', (mod
   expect(theme.palette.mode).toBe(mode)
   expect(theme.palette.background).toMatchObject({ default: tokens[mode].canvas, paper: tokens[mode].surface })
   expect(theme.palette.secondary.main).toBe(tokens[mode].accent)
-  expect(theme.palette.primary.main).toBe(tokens[mode].primary)
+  // Primary button = solid text color on surface.
+  expect(theme.palette.primary).toMatchObject({ main: tokens[mode].text, contrastText: tokens[mode].surface })
+  expect(theme.palette.divider).toBe(tokens[mode].border)
+  expect(theme.palette.action.hover).toBe(tokens[mode].line)
+  expect(theme.palette.success.main).toBe(tokens[mode].easy)
+  expect(theme.palette.warning.main).toBe(tokens[mode].medium)
+  expect(theme.palette.error.main).toBe(tokens[mode].hard)
+})
+
+test('v2 values: radius 8, Geist only, spec type scale', () => {
+  expect(radius).toBe(8)
+  expect(tokens.light).toMatchObject({ canvas: '#F6F6F4', surface: '#FFFFFF', accent: '#D97706', accentText: '#B45309' })
+  expect(tokens.dark).toMatchObject({ canvas: '#121212', surface: '#1A1A1A', accent: '#FBBF24' })
+  expect(Object.values(fonts).join()).not.toMatch(/Instrument|Georgia|[^-]serif/)
+  const { typography } = createAppTheme('light')
+  expect(typography.body1).toMatchObject({ fontSize: '0.8125rem', lineHeight: 1.5 })
+  expect(typography.subtitle1).toMatchObject({ fontSize: '0.875rem', fontWeight: 600 })
+  expect(typography.overline).toMatchObject({ fontSize: '0.6875rem', letterSpacing: '0.04em', textTransform: 'uppercase' })
 })
 
 test('defaults to following the system preference', () => {

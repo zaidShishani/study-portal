@@ -255,7 +255,7 @@ function PageEditor({ page, onDirtyChange, onError }: EditorProps) {
           Save
         </Button>
       </Stack>
-      <Typography variant="body2" color={dirty ? 'warning.main' : 'text.secondary'}>
+      <Typography variant="body2" color={dirty ? 'text.primary' : 'text.secondary'}>
         {dirty ? 'Unsaved changes' : 'All changes saved'}
       </Typography>
       {contentError && <Typography color="error" variant="body2">{contentError}</Typography>}
