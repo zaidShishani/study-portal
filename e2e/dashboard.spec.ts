@@ -25,7 +25,9 @@ test('seeded card, problem and roadmap show on the home panels; Start review ope
     'href',
     `/?focus=flashcards&review=${deck.id}`,
   )
-  await expect(main.getByRole('link', { name: new RegExp(`E2E dash problem ${tag}`) })).toHaveAttribute(
+  // The calendar agenda lists today's due problem too; check the LeetCode panel's link.
+  const leetcode = main.getByRole('region', { name: 'LeetCode' })
+  await expect(leetcode.getByRole('link', { name: new RegExp(`E2E dash problem ${tag}`) })).toHaveAttribute(
     'href',
     `/?focus=leetcode&problem=${problem.id}`,
   )

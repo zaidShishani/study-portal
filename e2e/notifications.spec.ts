@@ -17,7 +17,7 @@ test('reminder that just fired shows on the bell; clicking it marks it read', as
   await expect(bell).not.toHaveAccessibleName('Notifications, 0 unread')
   await bell.click()
   await page.getByRole('menuitem', { name: new RegExp(title) }).click()
-  await expect(page).toHaveURL(/\/calendar$/)
+  await expect(page).toHaveURL(/\/\?focus=calendar$/)
 
   await expect(async () => {
     const unread: { title: string }[] = await (await page.request.get('/api/notifications')).json()

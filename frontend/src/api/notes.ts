@@ -1,4 +1,4 @@
-import type { NoteFolder, NotePage, NotePageItem } from '../types'
+import type { NoteFolder, NotePage, NotePageItem, RecentPage } from '../types'
 import { api } from './client'
 
 export const listFolders = () => api<NoteFolder[]>('/notes/folders')
@@ -15,6 +15,9 @@ export const deleteFolder = (id: number) => api<void>(`/notes/folders/${id}`, { 
 // null = root pages.
 export const listPages = (folderId: number | null) =>
   api<NotePageItem[]>(folderId === null ? '/notes/pages' : `/notes/pages?folder_id=${folderId}`)
+
+// 5 rows show on home; the 6th only tells it there are more.
+export const listRecentPages = () => api<RecentPage[]>('/notes/pages/recent?limit=6')
 
 export const getPage = (id: number) => api<NotePage>(`/notes/pages/${id}`)
 

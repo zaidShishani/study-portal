@@ -7,6 +7,7 @@ import {
   getPage,
   listFolders,
   listPages,
+  listRecentPages,
   updateFolder,
   updatePage,
 } from '../api/notes'
@@ -31,6 +32,9 @@ export const usePage = (id: number | null) =>
 
 const FOLDERS = [...KEY, 'folders']
 const PAGES = [...KEY, 'pages']
+const RECENT = [...KEY, 'recent']
+
+export const useRecentPages = () => useQuery({ queryKey: RECENT, queryFn: listRecentPages })
 
 // Invalidate only what the mutation touched, so a save doesn't refetch every folder's page list.
 function useNotesMutation<A, R>(mutationFn: (arg: A) => Promise<R>, keys: (data: R | undefined, arg: A) => unknown[][]) {
@@ -42,10 +46,11 @@ function useNotesMutation<A, R>(mutationFn: (arg: A) => Promise<R>, keys: (data:
 }
 
 // Folder deletes drop the subtree's page lists from the tree; root pages are untouched.
+// Recent pages show folder names and vanish with their folder, so folder renames/deletes refresh them too.
 export const useCreateFolder = () => useNotesMutation(createFolder, () => [FOLDERS])
-export const useUpdateFolder = () => useNotesMutation(updateFolder, () => [FOLDERS])
-export const useDeleteFolder = () => useNotesMutation(deleteFolder, () => [FOLDERS])
-export const useCreatePage = () => useNotesMutation(createPage, (p) => (p ? [[...PAGES, p.folder_id]] : []))
+export const useUpdateFolder = () => useNotesMutation(updateFolder, () => [FOLDERS, RECENT])
+export const useDeleteFolder = () => useNotesMutation(deleteFolder, () => [FOLDERS, RECENT])
+export const useCreatePage = () => useNotesMutation(createPage, (p) => (p ? [[...PAGES, p.folder_id], RECENT] : [RECENT]))
 // A move invalidates all page lists (the old folder isn't known here); a plain save only its own list.
 export function useUpdatePage() {
   const queryClient = useQueryClient()
@@ -60,11 +65,11 @@ export function useUpdatePage() {
     },
     onSettled: (p, _err, arg) =>
       Promise.all(
-        [[...KEY, 'page', arg.id], 'folder_id' in arg || !p ? PAGES : [...PAGES, p.folder_id]].map((queryKey) =>
+        [[...KEY, 'page', arg.id], RECENT, 'folder_id' in arg || !p ? PAGES : [...PAGES, p.folder_id]].map((queryKey) =>
           queryClient.invalidateQueries({ queryKey }),
         ),
       ),
   })
 }
 export const useDeletePage = () =>
-  useNotesMutation((p: NotePageItem) => deletePage(p.id), (_, p) => [[...PAGES, p.folder_id]])
+  useNotesMutation((p: NotePageItem) => deletePage(p.id), (_, p) => [[...PAGES, p.folder_id], RECENT])

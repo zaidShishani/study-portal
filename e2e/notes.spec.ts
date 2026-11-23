@@ -21,7 +21,7 @@ test('create folder, subfolder and page; saved markdown persists across reload',
   const folder = `E2E folder ${stamp}`
   const sub = `E2E sub ${stamp}`
   const title = `E2E page ${stamp}`
-  await page.goto('/notes')
+  await page.goto('/?focus=notes')
 
   // A new folder is selected after creation, so the next item goes inside it.
   await create(page, 'New folder', folder)
@@ -48,7 +48,7 @@ test('moving a page between a nested folder and root 10 times keeps one tree ite
   const stamp = Date.now()
   const sub = `E2E move sub ${stamp}`
   const title = `E2E move page ${stamp}`
-  await page.goto('/notes')
+  await page.goto('/?focus=notes')
   await create(page, 'New folder', `E2E move folder ${stamp}`)
   await create(page, 'New folder', sub)
   await create(page, 'New page', title)
@@ -71,4 +71,31 @@ test('moving a page between a nested folder and root 10 times keeps one tree ite
   }
   await expect(page.getByRole('tree')).toBeVisible()
   await expect(page.getByRole('alert')).toHaveCount(0)
+})
+
+test('home notes card: recent pages, edits move a page to the top, New page opens the editor', async ({ page, baseURL }) => {
+  const stamp = Date.now()
+  const mk = async (title: string) => (await (await page.request.post('/api/notes/pages', { data: { title } })).json()).id
+  const older = await mk(`E2E recent A ${stamp}`)
+  await mk(`E2E recent B ${stamp}`)
+
+  await page.goto('/')
+  const card = page.getByRole('region', { name: 'Notes' })
+  const links = card.getByRole('link')
+  await expect(links.first()).toHaveText(new RegExp(`E2E recent B ${stamp}`))
+  await expect(links.first()).toContainText('Root')
+
+  // Edit the older page in the focus view; back on home it is first.
+  await card.getByRole('link', { name: new RegExp(`E2E recent A ${stamp}`) }).click()
+  await expect(page).toHaveURL(new URL(`/?focus=notes&page=${older}`, baseURL).href)
+  await expect(page.getByLabel('Title')).toHaveValue(`E2E recent A ${stamp}`)
+  await page.getByLabel('Content').fill('edited')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('All changes saved')).toBeVisible()
+  await page.getByRole('button', { name: 'Back to home' }).click()
+  await expect(links.first()).toHaveText(new RegExp(`E2E recent A ${stamp}`))
+
+  await card.getByRole('button', { name: 'New page' }).click()
+  await expect(page).toHaveURL(/\/\?focus=notes&page=\d+$/)
+  await expect(page.getByLabel('Title')).toHaveValue('Untitled')
 })

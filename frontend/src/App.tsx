@@ -2,10 +2,8 @@ import { Navigate, Route, Routes, useParams, type Params } from 'react-router-do
 import Layout from './components/Layout'
 import { focusUrl } from './hooks/useFocus'
 import { useMe } from './hooks/useMe'
-import CalendarPage from './pages/CalendarPage'
 import HomePage from './pages/HomePage'
 import NotFoundPage from './pages/NotFoundPage'
-import NotesPage from './pages/NotesPage'
 import SettingsPage from './pages/SettingsPage'
 
 /** Old section URLs → the home focus view. Ids are validated by useFocus on arrival. */
@@ -30,8 +28,8 @@ export default function App() {
         <Route path="leetcode/:id" element={<Redirect to={(p) => ({ focus: 'leetcode', problem: p.id! })} />} />
         <Route path="roadmaps" element={<Redirect to={() => ({ focus: 'roadmaps' })} />} />
         <Route path="roadmaps/:id" element={<Redirect to={(p) => ({ focus: 'roadmaps', roadmap: p.id! })} />} />
-        <Route path="notes" element={<NotesPage />} />
-        <Route path="calendar" element={<CalendarPage />} />
+        <Route path="notes" element={<Redirect to={() => ({ focus: 'notes' })} />} />
+        <Route path="calendar" element={<Redirect to={() => ({ focus: 'calendar' })} />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

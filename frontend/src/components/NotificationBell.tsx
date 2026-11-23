@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Badge, Divider, IconButton, ListItemText, Menu, MenuItem } from '@mui/material'
 import NotificationsIcon from '@mui/icons-material/Notifications'
+import { focusUrl } from '../hooks/useFocus'
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -51,7 +52,7 @@ export default function NotificationBell() {
             onClick={() =>
               run((opts) => {
                 markRead.mutate(n.id, opts)
-                navigate('/calendar')
+                navigate(focusUrl({ focus: 'calendar' }))
               })
             }
           >

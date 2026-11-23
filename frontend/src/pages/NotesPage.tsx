@@ -28,7 +28,14 @@ function flatten(level: TreeLevel, depth = 0): FolderOption[] {
   return level.folders.flatMap((n) => [{ id: n.folder.id, name: n.folder.name, depth }, ...flatten(n, depth + 1)])
 }
 
-export default function NotesPage() {
+type Props = {
+  /** Open (and reveal in the tree) this page on mount. */
+  initialPageId?: number
+  /** Called when the open page gains or loses unsaved edits. */
+  onDirtyChange?: (dirty: boolean) => void
+}
+
+export default function NotesPage({ initialPageId, onDirtyChange }: Props) {
   const folders = useFolders()
   const folderList = useMemo(() => folders.data ?? [], [folders.data])
   const allPages = useAllPages(folderList.map((f) => f.id))
@@ -40,10 +47,13 @@ export default function NotesPage() {
   const updatePage = useUpdatePage()
   const deletePage = useDeletePage()
 
-  const [selected, setSelected] = useState<string | null>(null)
-  const [openPageId, setOpenPageId] = useState<number | null>(null)
+  const [selected, setSelected] = useState<string | null>(initialPageId ? `p-${initialPageId}` : null)
+  const [openPageId, setOpenPageId] = useState<number | null>(initialPageId ?? null)
   const page = usePage(openPageId)
   const [dirty, setDirty] = useState(false)
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
   const [expanded, setExpanded] = useState<string[]>([])
   const [dialog, setDialog] = useState<DialogKind | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -60,6 +70,17 @@ export default function NotesPage() {
   // New items go into the selected folder, or the selected page's folder, else root.
   const targetFolder = selectedFolder?.id ?? selectedPage?.folder_id ?? null
   const folderOptions = useMemo(() => flatten(tree), [tree])
+
+  // Expand the initial page's folder chain once the page shows up in the tree.
+  const revealed = useRef(false)
+  useEffect(() => {
+    const initial = allPages.pages.find((p) => p.id === initialPageId)
+    if (revealed.current || !initial) return
+    revealed.current = true
+    const ids: string[] = []
+    for (let f = initial.folder_id; f !== null; f = folderList.find((x) => x.id === f)?.parent_id ?? null) ids.push(`f-${f}`)
+    setExpanded((cur) => [...new Set([...cur, ...ids])])
+  }, [allPages.pages, folderList, initialPageId])
 
   const canLeavePage = () => !dirty || window.confirm('Discard unsaved changes?')
 

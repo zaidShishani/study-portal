@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { AppNotification } from '../types'
 import NotificationBell from './NotificationBell'
@@ -38,16 +38,18 @@ const posts = (fetchMock: ReturnType<typeof mockApi>) =>
 const gets = (fetchMock: ReturnType<typeof mockApi>) =>
   fetchMock.mock.calls.filter(([, init]) => !init?.method).length
 
+function Url() {
+  const { pathname, search } = useLocation()
+  return <output aria-label="url">{pathname + search}</output>
+}
+
 function renderBell() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <NotificationBell />
-        <Routes>
-          <Route path="/" element={<h1>home</h1>} />
-          <Route path="/calendar" element={<h1>calendar</h1>} />
-        </Routes>
+        <Url />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -82,7 +84,7 @@ test('clicking a notification marks it read, navigates, and the badge drops', as
   renderBell()
   fireEvent.click(await bell('2'))
   fireEvent.click(screen.getByRole('menuitem', { name: /Event 1/ }))
-  expect(screen.getByRole('heading', { name: 'calendar' })).toBeTruthy()
+  expect(screen.getByRole('status', { name: 'url' }).textContent).toBe('/?focus=calendar')
   await bell('1')
   expect(posts(fetchMock)).toEqual(['/api/notifications/1/read'])
 })

@@ -67,13 +67,14 @@ function mockApi(initialFolders: NoteFolder[], initialPages: NotePage[], opts: {
   return fetchMock
 }
 
-function renderPage() {
+function renderPage(initialPageId?: number) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <NotesPage />
+      <NotesPage initialPageId={initialPageId} />
     </QueryClientProvider>,
   )
+  return client
 }
 
 const calls = (fetchMock: { mock: { calls: [string, RequestInit?][] } }, method: string) =>
@@ -257,4 +258,35 @@ test('switching pages with unsaved changes asks first', async () => {
   confirm.mockReturnValue(true)
   fireEvent.click(screen.getByText('Second'))
   expect(await screen.findByDisplayValue('Second')).toBeTruthy()
+})
+
+test('initialPageId opens that page and expands its folders', async () => {
+  mockApi(FOLDERS, PAGES)
+  renderPage(11)
+  expect(await screen.findByDisplayValue('Dijkstra')).toBeTruthy()
+  const item = (await within(screen.getByRole('tree')).findByText('Dijkstra')).closest('[role="treeitem"]')!
+  expect(item.getAttribute('aria-selected')).toBe('true')
+})
+
+test('page create, save, move and delete refresh the recent pages', async () => {
+  mockApi([], [mkPage(10, 'Root note', null, 'old')])
+  const client = renderPage(10)
+  const spy = vi.spyOn(client, 'invalidateQueries')
+  const recentCalls = () => spy.mock.calls.filter(([f]) => JSON.stringify(f?.queryKey) === '["notes","recent"]').length
+  fireEvent.change(await screen.findByLabelText('Content'), { target: { value: 'new' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(recentCalls()).toBe(1))
+
+  fireEvent.click(screen.getByRole('button', { name: 'Move' }))
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(recentCalls()).toBe(2))
+
+  fireEvent.click(screen.getByRole('button', { name: 'New page' }))
+  fireEvent.change(within(screen.getByRole('dialog')).getByLabelText('Name'), { target: { value: 'Scratch' } })
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(recentCalls()).toBe(3))
+
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
+  await waitFor(() => expect(recentCalls()).toBe(4))
 })

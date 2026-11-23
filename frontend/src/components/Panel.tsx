@@ -10,18 +10,20 @@ type Props = {
   onExpand?: () => void
   /** Focused (full) view: shows a back arrow instead of the header; the child page brings its own h1. */
   onBack?: () => void
+  /** Position in the one-column phone layout. */
+  order?: number
   children: ReactNode
 }
 
-/** A home card. Its lowercased title is both the grid area and the heading id (`panel-<name>`). */
-export default function Panel({ title, count, onExpand, onBack, children }: Props) {
+/** A home card. Its lowercased title is the heading id (`panel-<name>`). */
+export default function Panel({ title, count, onExpand, onBack, order, children }: Props) {
   const name = title.toLowerCase()
   return (
     <Paper
       component="section"
       aria-labelledby={onBack ? undefined : `panel-${name}`}
       aria-label={onBack ? title : undefined}
-      sx={{ p: 3, minWidth: 0, gridArea: name }}
+      sx={{ p: 3, minWidth: 0, order }}
     >
       {onBack ? (
         <IconButton aria-label="Back to home" onClick={onBack} sx={{ ml: -1, mt: -1, mb: 1 }}>

@@ -74,6 +74,8 @@ test('old section URLs redirect to the home focus view', () => {
     ['/leetcode/7', '/?focus=leetcode&problem=7'],
     ['/roadmaps', '/?focus=roadmaps'],
     ['/roadmaps/2', '/?focus=roadmaps&roadmap=2'],
+    ['/calendar', '/?focus=calendar'],
+    ['/notes', '/?focus=notes'],
     // Junk is encoded, then rejected by useFocus.
     ['/flashcards/a&focus=x', '/?focus=flashcards&deck=a%26focus%3Dx'],
   ]) {
@@ -81,11 +83,6 @@ test('old section URLs redirect to the home focus view', () => {
     expect(screen.getByRole('status', { name: 'url' }).textContent).toBe(to)
     cleanup()
   }
-})
-
-test('existing section routes still render', () => {
-  renderApp('/calendar')
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Calendar')
 })
 
 test('unknown route shows not found', () => {
