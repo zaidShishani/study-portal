@@ -131,3 +131,12 @@ export type Problem = ProblemInput & {
   created_at: string
   updated_at: string
 }
+
+// Not `Notification`: that name is the DOM Notification global.
+export type AppNotification = {
+  id: number
+  event_id: number
+  title: string
+  occurrence_start: string
+  fire_at: string
+}
