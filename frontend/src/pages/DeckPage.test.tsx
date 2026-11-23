@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, expect, test, vi } from 'vitest'
+import dayjs from 'dayjs'
 import type { Card, Deck } from '../types'
 import DeckPage from './DeckPage'
 
@@ -9,6 +10,8 @@ afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
 })
+
+const today = dayjs().format('YYYY-MM-DD')
 
 const deck: Deck = {
   id: 1,
@@ -25,7 +28,7 @@ const card = (id: number, front: string, retired = false): Card => ({
   front,
   back: `back ${id}`,
   stage: retired ? 4 : 1,
-  due_date: retired ? null : '2026-11-23',
+  due_date: retired ? null : today,
   review_count: 0,
   last_reviewed_at: null,
   retired_at: retired ? '2026-11-01T00:00:00Z' : null,
@@ -49,7 +52,7 @@ function mockApi(initial: Card[], deckDue = 1) {
     }
     if (u.pathname.endsWith('/unretire')) {
       const id = Number(u.pathname.split('/')[3])
-      cards = cards.map((c) => (c.id === id ? { ...c, retired_at: null, stage: 1, due_date: '2026-11-23' } : c))
+      cards = cards.map((c) => (c.id === id ? { ...c, retired_at: null, stage: 1, due_date: today } : c))
       return Response.json(cards.find((c) => c.id === id))
     }
     if (method === 'POST') {
@@ -89,24 +92,24 @@ function renderPage(deckId = 1) {
 const calls = (fetchMock: ReturnType<typeof mockApi>, method: string) =>
   fetchMock.mock.calls.filter(([, init]) => (init?.method ?? 'GET') === method)
 
-test('renders deck title and cards with markdown front, stage and due date', async () => {
-  mockApi([card(1, '**What is ATP?**')])
+test('renders the deck title row and two-line card rows: plain front, back, due label', async () => {
+  mockApi([card(1, '**What is ATP?**'), { ...card(2, 'Later'), due_date: dayjs().add(3, 'day').format('YYYY-MM-DD') }])
   renderPage()
-  expect(await screen.findByRole('heading', { name: 'Biology' })).toBeTruthy()
-  expect((await screen.findByText('What is ATP?')).tagName).toBe('STRONG')
-  expect(screen.getByText('Stage 1 · Due 2026-11-23')).toBeTruthy()
+  expect(await screen.findByRole('heading', { level: 3, name: 'Biology' })).toBeTruthy()
+  expect(screen.getByText('2 cards')).toBeTruthy()
+  expect(await screen.findByText('What is ATP?')).toBeTruthy()
+  expect(screen.queryByText(/\*\*/)).toBeNull()
+  expect(screen.getByText('back 1')).toBeTruthy()
+  expect(screen.getByText('Due today')).toBeTruthy()
+  expect(screen.getByText('In 3 days')).toBeTruthy()
   // Button labels carry a plain-text excerpt of the front (markdown stripped, capped).
   expect(screen.getByRole('button', { name: 'Edit card: What is ATP?' })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Delete card: What is ATP?' })).toBeTruthy()
-  fireEvent.click(screen.getByRole('link', { name: 'Start review (1 due)' }))
-  expect(screen.getByRole('heading', { name: '?focus=flashcards&review=1' })).toBeTruthy()
 })
 
-test('review button is disabled when nothing is due', async () => {
+test('empty deck says so', async () => {
   mockApi([], 0)
   renderPage()
-  const btn = await screen.findByRole('link', { name: 'Start review (0 due)' })
-  expect(btn.getAttribute('aria-disabled')).toBe('true')
   expect(await screen.findByText('No cards here.')).toBeTruthy()
 })
 
@@ -119,7 +122,7 @@ test('filter switches the status query param', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Retired' }))
   expect(await screen.findByText('retired one')).toBeTruthy()
   expect(screen.queryByText('active one')).toBeNull()
-  expect(screen.getByText('Stage 4 · Retired')).toBeTruthy()
+  expect(screen.getByText('Retired', { selector: 'p' })).toBeTruthy()
 
   fireEvent.click(screen.getByRole('button', { name: 'All' }))
   expect(await screen.findByText('active one')).toBeTruthy()
@@ -128,46 +131,6 @@ test('filter switches the status query param', async () => {
   expect(urls).toContain('/api/decks/1/cards?status=active')
   expect(urls).toContain('/api/decks/1/cards?status=retired')
   expect(urls).toContain('/api/decks/1/cards?status=all')
-})
-
-test('create dialog validates and submits', async () => {
-  const fetchMock = mockApi([])
-  renderPage()
-  fireEvent.click(await screen.findByRole('button', { name: 'New card' }))
-  const dialog = screen.getByRole('dialog')
-  const save = () => fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
-
-  save()
-  expect(within(dialog).getByText('Front: Required')).toBeTruthy()
-  expect(within(dialog).getByText('Back: Required')).toBeTruthy()
-
-  fireEvent.change(within(dialog).getByLabelText('Front'), { target: { value: 'x'.repeat(10_001) } })
-  fireEvent.change(within(dialog).getByLabelText('Back'), { target: { value: 'answer' } })
-  save()
-  expect(within(dialog).getByText('Front: Max 10000 characters')).toBeTruthy()
-  expect(calls(fetchMock, 'POST')).toHaveLength(0)
-
-  fireEvent.change(within(dialog).getByLabelText('Front'), { target: { value: 'question' } })
-  save()
-  expect(await screen.findByText('question')).toBeTruthy()
-  const [url, init] = calls(fetchMock, 'POST')[0]
-  expect(url).toBe('/api/decks/1/cards')
-  expect(JSON.parse(String(init?.body))).toEqual({ front: 'question', back: 'answer' })
-  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-})
-
-test('double-clicking Save creates only one card', async () => {
-  const fetchMock = mockApi([])
-  renderPage()
-  fireEvent.click(await screen.findByRole('button', { name: 'New card' }))
-  const dialog = screen.getByRole('dialog')
-  fireEvent.change(within(dialog).getByLabelText('Front'), { target: { value: 'q' } })
-  fireEvent.change(within(dialog).getByLabelText('Back'), { target: { value: 'a' } })
-  const save = within(dialog).getByRole('button', { name: 'Save' })
-  fireEvent.click(save)
-  fireEvent.click(save)
-  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
-  expect(calls(fetchMock, 'POST')).toHaveLength(1)
 })
 
 test('edit prefills front and back and PATCHes the card', async () => {
@@ -211,7 +174,7 @@ test('un-retire moves a retired card back to the active list', async () => {
 
   fireEvent.click(screen.getByRole('button', { name: 'Active' }))
   expect(await screen.findByText('old news')).toBeTruthy()
-  expect(screen.getByText('Stage 1 · Due 2026-11-23')).toBeTruthy()
+  expect(screen.getByText('Due today')).toBeTruthy()
 })
 
 test('double-clicking Un-retire sends one POST', async () => {

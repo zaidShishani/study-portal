@@ -1,15 +1,16 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Box, Button, Checkbox, IconButton, Paper, Snackbar, Stack, Typography } from '@mui/material'
-import AddIcon from '@mui/icons-material/Add'
+import { Box, Button, Checkbox, IconButton, Snackbar, Stack, Typography } from '@mui/material'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
-import DeleteIcon from '@mui/icons-material/Delete'
-import EditIcon from '@mui/icons-material/Edit'
+import DeleteIcon from '@mui/icons-material/DeleteOutlined'
+import EditIcon from '@mui/icons-material/EditOutlined'
 import dayjs from 'dayjs'
 import { ApiError } from '../api/client'
+import { HeaderActions } from '../components/Card'
 import CheckpointDialog from '../components/CheckpointDialog'
 import ConfirmDialog from '../components/ConfirmDialog'
+import ListRow from '../components/ListRow'
 import RoadmapProgress from '../components/RoadmapProgress'
 import { focusUrl } from '../hooks/useFocus'
 import {
@@ -20,6 +21,9 @@ import {
   useUpdateCheckpoint,
 } from '../hooks/useRoadmaps'
 import type { Checkpoint, CheckpointInput } from '../types'
+
+/** "Nov 20" from YYYY-MM-DD (T00:00 parses as local midnight, so the day doesn't shift). */
+const shortDate = (ymd: string) => new Date(`${ymd}T00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })
 
 export default function RoadmapPage({ roadmapId }: { roadmapId: number }) {
   const roadmap = useRoadmap(roadmapId)
@@ -44,14 +48,14 @@ export default function RoadmapPage({ roadmapId }: { roadmapId: number }) {
 
   if (roadmap.error instanceof ApiError && roadmap.error.status === 404) {
     return (
-      <>
-        <Typography variant="h4" component="h1" gutterBottom>
+      <Box sx={{ p: 2 }}>
+        <Typography variant="subtitle2" component="h3" gutterBottom>
           Roadmap not found
         </Typography>
-        <Button component={Link} to={focusUrl({ focus: 'roadmaps' })}>
+        <Button size="small" component={Link} to={focusUrl({ focus: 'roadmaps' })}>
           Back to roadmaps
         </Button>
-      </>
+      </Box>
     )
   }
 
@@ -106,91 +110,75 @@ export default function RoadmapPage({ roadmapId }: { roadmapId: number }) {
 
   return (
     <>
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 2, gap: 2, flexWrap: 'wrap' }}>
-        <Typography variant="h4" component="h1" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-          {roadmap.data?.title}
-        </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing({})}>
+      <HeaderActions>
+        <Button size="small" variant="contained" onClick={() => setEditing({})}>
           New checkpoint
         </Button>
+      </HeaderActions>
+
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5, minHeight: 44, px: 2, borderBottom: 1, borderColor: 'action.hover' }}>
+        <Typography variant="subtitle2" component="h3" sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {roadmap.data?.title}
+        </Typography>
+        {roadmap.data && <RoadmapProgress title={roadmap.data.title} done={roadmap.data.done_count} total={roadmap.data.total_count} />}
       </Stack>
 
-      {roadmap.data && (
-        <Box sx={{ mb: 3, maxWidth: 400 }}>
-          <RoadmapProgress done={roadmap.data.done_count} total={roadmap.data.total_count} />
-        </Box>
+      {roadmap.data && checkpoints.length === 0 && (
+        <Typography color="text.secondary" sx={{ px: 2, py: 1.5 }}>
+          No checkpoints yet.
+        </Typography>
       )}
 
-      {roadmap.data && checkpoints.length === 0 && <Typography color="text.secondary">No checkpoints yet.</Typography>}
-
-      <Stack spacing={1.5} component="ol" sx={{ p: 0, m: 0, listStyle: 'none' }}>
+      <Box component="ol" sx={{ p: 0, m: 0, listStyle: 'none' }}>
         {checkpoints.map((c, i) => {
           const overdue = !c.done_at && !!c.target_date && c.target_date < today
           return (
-            <Paper
-              key={c.id}
-              component="li"
-              variant="outlined"
-              sx={{
-                p: 1.5,
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 1,
-                alignItems: 'flex-start',
-                borderColor: overdue ? 'secondary.main' : undefined,
-              }}
-            >
-              <Checkbox
-                checked={!!c.done_at}
-                disabled={toggleDone.isPending}
-                onChange={() => toggle(c)}
-                slotProps={{ input: { 'aria-label': `Done: ${c.title}` } }}
-              />
-              {/* Text keeps >=180px; on narrow screens the buttons wrap to their own line. */}
-              <Box sx={{ flex: '1 1 180px', minWidth: 0, pt: 1 }}>
-                <Typography
-                  sx={{ overflowWrap: 'anywhere', textDecoration: c.done_at ? 'line-through' : undefined }}
-                >
-                  {c.title}
+            <Box component="li" key={c.id}>
+              <ListRow>
+                <Checkbox
+                  size="small"
+                  checked={!!c.done_at}
+                  disabled={toggleDone.isPending}
+                  onChange={() => toggle(c)}
+                  slotProps={{ input: { 'aria-label': `Done: ${c.title}` } }}
+                  sx={{ p: 0.5, ml: -0.5 }}
+                />
+                <Box sx={{ flex: 1, minWidth: 0, py: 1 }}>
+                  <Box sx={{ overflowWrap: 'anywhere', color: c.done_at ? 'text.secondary' : 'text.primary' }}>{c.title}</Box>
+                  {c.description && (
+                    // Plain text, not markdown; pre-wrap keeps the user's newlines.
+                    <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                      {c.description}
+                    </Typography>
+                  )}
+                </Box>
+                <Typography variant="body2" sx={{ flexShrink: 0, color: overdue ? 'secondary.dark' : 'text.secondary' }}>
+                  {c.done_at ? 'Done' : c.target_date ? `${overdue ? 'Overdue · ' : ''}${shortDate(c.target_date)}` : ''}
                 </Typography>
-                {c.description && (
-                  // Plain text, not markdown; pre-wrap keeps the user's newlines.
-                  <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                    {c.description}
-                  </Typography>
-                )}
-                {c.target_date && (
-                  <Typography variant="body2" color={overdue ? 'error' : 'text.secondary'} sx={{ mt: 0.5 }}>
-                    {overdue ? `Overdue · target ${c.target_date}` : `Target ${c.target_date}`}
-                  </Typography>
-                )}
-              </Box>
-              <Box sx={{ display: 'flex', ml: 'auto' }}>
-                <IconButton
-                  aria-label={`Move up: ${c.title}`}
-                  disabled={i === 0 || reorder.isPending}
-                  onClick={() => move(i, -1)}
-                >
-                  <ArrowUpwardIcon />
-                </IconButton>
-                <IconButton
-                  aria-label={`Move down: ${c.title}`}
-                  disabled={i === checkpoints.length - 1 || reorder.isPending}
-                  onClick={() => move(i, 1)}
-                >
-                  <ArrowDownwardIcon />
-                </IconButton>
-                <IconButton aria-label={`Edit: ${c.title}`} onClick={() => setEditing({ checkpoint: c })}>
-                  <EditIcon />
-                </IconButton>
-                <IconButton aria-label={`Delete: ${c.title}`} onClick={() => setDeleting(c)}>
-                  <DeleteIcon />
-                </IconButton>
-              </Box>
-            </Paper>
+                <Stack direction="row" sx={{ flexShrink: 0 }}>
+                  <IconButton size="small" aria-label={`Move up: ${c.title}`} disabled={i === 0 || reorder.isPending} onClick={() => move(i, -1)}>
+                    <ArrowUpwardIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    aria-label={`Move down: ${c.title}`}
+                    disabled={i === checkpoints.length - 1 || reorder.isPending}
+                    onClick={() => move(i, 1)}
+                  >
+                    <ArrowDownwardIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" aria-label={`Edit: ${c.title}`} onClick={() => setEditing({ checkpoint: c })}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                  <IconButton size="small" aria-label={`Delete: ${c.title}`} onClick={() => setDeleting(c)}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              </ListRow>
+            </Box>
           )
         })}
-      </Stack>
+      </Box>
 
       {editing && (
         <CheckpointDialog

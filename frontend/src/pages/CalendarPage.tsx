@@ -105,10 +105,7 @@ export default function CalendarPage() {
   const dialogInitial = editing?.id ? event.data : editing?.initial
 
   return (
-    <>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Calendar
-      </Typography>
+    <Box sx={{ p: 2 }}>
       <Stack direction="row" component="ul" sx={{ gap: 2, flexWrap: 'wrap', listStyle: 'none', p: 0, m: 0, mb: 2 }} aria-label="Legend">
         {(
           [
@@ -125,22 +122,17 @@ export default function CalendarPage() {
         ))}
       </Stack>
       {data?.truncated && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
+        <Alert severity="warning" sx={{ mb: 2, py: 0 }}>
           This range has too many items; some are not shown.
         </Alert>
       )}
       {invalidCount > 0 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
+        <Alert severity="warning" sx={{ mb: 2, py: 0 }}>
           {invalidCount} event(s) have a recurrence rule that can't be shown.
         </Alert>
       )}
-      {/* Toolbar wraps and the title shrinks so a phone-width screen doesn't scroll sideways. */}
-      <Box
-        sx={{
-          '& .fc-header-toolbar': { flexWrap: 'wrap', gap: 1 },
-          '& .fc-toolbar-title': { fontSize: { xs: '1.1rem', sm: '1.75em' } },
-        }}
-      >
+      {/* Toolbar wraps so a phone-width screen doesn't scroll sideways; the theme sets its 14px title. */}
+      <Box sx={{ '& .fc-header-toolbar': { flexWrap: 'wrap', gap: 1 }, '& .fc .fc-button': { fontSize: 13, py: 0.5 } }}>
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="dayGridMonth"
@@ -198,6 +190,6 @@ export default function CalendarPage() {
         onClose={() => setDeleting(false)}
       />
       <Snackbar open={!!snackbar} message={snackbar} autoHideDuration={6000} onClose={closeSnackbar} />
-    </>
+    </Box>
   )
 }

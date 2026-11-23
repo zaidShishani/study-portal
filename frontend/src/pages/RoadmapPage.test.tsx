@@ -72,19 +72,19 @@ function renderPage(roadmapId = 1) {
 const calls = (fetchMock: { mock: { calls: [string, RequestInit?][] } }, method: string) =>
   fetchMock.mock.calls.filter(([, init]) => init?.method === method)
 const bodyOf = (call: [string, RequestInit?]) => JSON.parse(String(call[1]?.body))
-const titles = () => screen.getAllByRole('listitem').map((li) => li.querySelector('p')?.textContent)
+const titles = () => screen.getAllByRole('checkbox').map((b) => b.getAttribute('aria-label')!.replace('Done: ', ''))
 
 test('toggling a checkbox PATCHes done once and progress updates', async () => {
   let release = () => {}
   const fetchMock = mockApi([cp(1, 'Learn SQL'), cp(2, 'Learn HTTP'), cp(3, 'Learn Docker')], new Promise<void>((r) => (release = r)))
   renderPage()
   const box = await screen.findByRole('checkbox', { name: 'Done: Learn SQL' })
-  expect(screen.getByText('0/3 · 0%')).toBeTruthy()
+  expect(screen.getByText('0 / 3')).toBeTruthy()
   fireEvent.click(box)
   fireEvent.click(box) // same tick: only the ref guard can block this one
   await waitFor(() => expect((box as HTMLInputElement).disabled).toBe(true))
   release()
-  expect(await screen.findByText('1/3 · 33%')).toBeTruthy()
+  expect(await screen.findByText('1 / 3')).toBeTruthy()
   expect(calls(fetchMock, 'PATCH')).toHaveLength(1)
   expect(calls(fetchMock, 'PATCH')[0][0]).toBe('/api/checkpoints/1')
   expect(bodyOf(calls(fetchMock, 'PATCH')[0])).toEqual({ done: true })
@@ -118,10 +118,11 @@ test('highlights only not-done checkpoints whose target date is past; descriptio
     cp(3, 'Future', { target_date: '2999-01-01' }),
   ])
   renderPage()
-  expect(await screen.findByText('Overdue · target 2000-01-01')).toBeTruthy()
+  const short = (ymd: string) => new Date(`${ymd}T00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })
+  expect(await screen.findByText(`Overdue · ${short('2000-01-01')}`)).toBeTruthy()
   expect(screen.getAllByText(/^Overdue/)).toHaveLength(1)
-  expect(screen.getByText('Target 2000-01-01')).toBeTruthy()
-  expect(screen.getByText('Target 2999-01-01')).toBeTruthy()
+  expect(screen.getByText('Done')).toBeTruthy()
+  expect(screen.getByText(short('2999-01-01'))).toBeTruthy()
   // Rendered verbatim (newline kept, markdown not parsed).
   expect(screen.getByText((_, el) => el?.textContent === 'line one\n**not bold**' && el.tagName === 'P')).toBeTruthy()
 })

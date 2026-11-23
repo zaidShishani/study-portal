@@ -14,12 +14,10 @@ import { useProblems } from '../hooks/useProblems'
 import { useRoadmap, useRoadmaps } from '../hooks/useRoadmaps'
 import { fonts } from '../theme/tokens'
 import CalendarPage from './CalendarPage'
-import DeckPage from './DeckPage'
 import FlashcardsPage from './FlashcardsPage'
 import LeetCodePage from './LeetCodePage'
 import NotesPage from './NotesPage'
 import ProblemPage from './ProblemPage'
-import ReviewPage from './ReviewPage'
 import RoadmapPage from './RoadmapPage'
 import RoadmapsPage from './RoadmapsPage'
 
@@ -178,42 +176,30 @@ export default function HomePage() {
   const creating = useRef(false)
   // The notes view reports unsaved edits so leaving it (collapse, Escape) can ask first.
   const notesDirty = useRef(false)
-  const focusBox = useRef<HTMLDivElement>(null)
   const cards = useRef<Record<string, HTMLElement | null>>({})
   const slots = useRef<Record<string, HTMLElement | null>>({})
   const lastFocus = useRef(focus)
   const lastSearch = useRef(search)
   useExpandFlip(focus, cards, slots)
 
-  // a11y: entering a view focuses its h1; leaving focuses the card's expand button. Views whose h1 waits for
-  // data (problem, review) hold focus on the view box until it appears.
+  // a11y: entering a view focuses the card title; leaving focuses the card's expand button. Moving inside a view
+  // (e.g. picking a deck) leaves focus alone unless the clicked control went away.
   useEffect(() => {
     // Only on navigation, not on first load or refresh.
     if (lastSearch.current === search) return
     lastSearch.current = search
     const prev = lastFocus.current
     lastFocus.current = focus
-    const box = focusBox.current
-    if (!focus || !box) {
+    if (!focus) {
       if (prev) cards.current[prev]?.querySelector<HTMLElement>('button[aria-expanded]')?.focus()
       return
     }
-    const focusH1 = () => {
-      const h1 = box.querySelector('h1')
-      if (h1) {
-        h1.tabIndex = -1
-        h1.focus()
-      }
-      return h1
-    }
-    if (focusH1()) return
-    box.focus()
-    const observer = new MutationObserver(() => {
-      // Give up if the user moved focus meanwhile.
-      if (document.activeElement !== box || focusH1()) observer.disconnect()
-    })
-    observer.observe(box, { childList: true, subtree: true })
-    return () => observer.disconnect()
+    const card = cards.current[focus]
+    if (prev === focus && card?.contains(document.activeElement)) return
+    const title = card?.querySelector('h2')
+    if (!title) return
+    title.tabIndex = -1
+    title.focus()
   }, [focus, search])
 
   const leave = useCallback(() => {
@@ -237,14 +223,7 @@ export default function HomePage() {
 
   const view = (name: PanelName) =>
     ({
-      flashcards:
-        review !== undefined ? (
-          <ReviewPage deckId={review === 'all' ? undefined : review} />
-        ) : deck ? (
-          <DeckPage deckId={deck} />
-        ) : (
-          <FlashcardsPage />
-        ),
+      flashcards: <FlashcardsPage deckId={deck ?? (review === 'all' ? undefined : review)} reviewAll={review === 'all'} />,
       leetcode: problem ? <ProblemPage problemId={problem} /> : <LeetCodePage />,
       roadmaps: roadmap ? <RoadmapPage roadmapId={roadmap} /> : <RoadmapsPage />,
       calendar: <CalendarPage />,
@@ -405,13 +384,7 @@ export default function HomePage() {
               expanded={expanded}
               onExpand={expanded ? leave : () => navigate(focusUrl({ focus: name }))}
             >
-              {expanded ? (
-                <Box ref={focusBox} tabIndex={-1} sx={{ p: 3, outline: 'none', '& h1:focus': { outline: 'none' } }}>
-                  {view(name)}
-                </Box>
-              ) : (
-                body
-              )}
+              {expanded ? view(name) : body}
             </Card>
           </Box>
         )

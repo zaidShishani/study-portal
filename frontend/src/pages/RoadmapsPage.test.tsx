@@ -54,9 +54,9 @@ test('lists roadmaps with done/total progress', async () => {
   mockApi([roadmap(1, 'Backend', 1, 3), roadmap(2, 'Empty')])
   renderPage()
   expect(await screen.findByText('Backend')).toBeTruthy()
-  expect(screen.getByText('1/3 · 33%')).toBeTruthy()
-  expect(screen.getByRole('progressbar', { name: 'Progress 1/3 · 33%' }).getAttribute('aria-valuenow')).toBe('33')
-  expect(screen.getByText('0/0 · 0%')).toBeTruthy()
+  expect(screen.getByText('1 / 3')).toBeTruthy()
+  expect(screen.getByRole('progressbar', { name: 'Backend progress' }).getAttribute('aria-valuenow')).toBe('33')
+  expect(screen.getByText('0 / 0')).toBeTruthy()
   expect(screen.getByRole('link', { name: /Backend/ }).getAttribute('href')).toBe('/?focus=roadmaps&roadmap=1')
 })
 
