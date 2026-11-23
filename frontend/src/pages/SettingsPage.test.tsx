@@ -12,10 +12,10 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-function renderPage(patchStatus = 200) {
+function renderPage(patchStatus = 200, serverTz = 'UTC') {
   let resolvePatch: (() => void) | null = null
   const fetchMock = vi.fn((_url: string, init?: RequestInit) => {
-    if (init?.method !== 'PATCH') return Promise.resolve(Response.json({ id: 1, email: null, timezone: 'UTC' }))
+    if (init?.method !== 'PATCH') return Promise.resolve(Response.json({ id: 1, email: null, timezone: serverTz }))
     const body = JSON.parse(String(init.body))
     return new Promise<Response>((resolve) => {
       resolvePatch = () =>
@@ -46,9 +46,9 @@ function renderPage(patchStatus = 200) {
   return { client, patches, finishPatch }
 }
 
-async function timezoneInput() {
+async function timezoneInput(current = 'UTC') {
   const input = (await screen.findByRole('combobox', { name: 'Timezone' })) as HTMLInputElement
-  await waitFor(() => expect(input.value).toBe('UTC'))
+  await waitFor(() => expect(input.value).toBe(current))
   return input
 }
 
@@ -87,6 +87,19 @@ test('a 422 is shown inline and not marked manual', async () => {
   await finishPatch()
   expect(await screen.findByText('Not a valid timezone')).toBeTruthy()
   expect(localStorage.getItem('tz-manual')).toBeNull()
+})
+
+test('UTC stays selectable even when the engine omits it from supportedValuesOf', async () => {
+  vi.spyOn(Intl, 'supportedValuesOf').mockReturnValue(['Asia/Tokyo', 'Europe/Amsterdam'])
+  const real = Intl.DateTimeFormat.prototype.resolvedOptions
+  vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(function (this: Intl.DateTimeFormat) {
+    return { ...real.call(this), timeZone: 'Europe/Amsterdam' }
+  })
+  renderPage(200, 'Asia/Tokyo')
+  const input = await timezoneInput('Asia/Tokyo')
+  input.focus()
+  fireEvent.change(input, { target: { value: 'UTC' } })
+  expect(await screen.findByRole('option', { name: 'UTC' })).toBeTruthy()
 })
 
 test('use browser timezone fills the field', async () => {

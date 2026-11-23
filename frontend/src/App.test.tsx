@@ -51,6 +51,7 @@ test('logout is disabled, focusable through its wrapper, and explains why', asyn
   renderApp()
   const logout = screen.getByRole('button', { name: 'Logout' }) as HTMLButtonElement
   expect(logout.disabled).toBe(true)
+  expect(document.getElementById(logout.getAttribute('aria-describedby')!)?.textContent).toBe('Available once login is set up')
   const wrapper = logout.parentElement!
   expect(wrapper.tabIndex).toBe(0)
   fireEvent.mouseOver(wrapper)

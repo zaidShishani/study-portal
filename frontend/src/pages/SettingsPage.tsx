@@ -14,9 +14,9 @@ export default function SettingsPage() {
   const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe, retry: false })
   const [picked, setPicked] = useState<string | null>(null)
   const timezone = picked ?? me?.timezone ?? null
-  // Some engines leave UTC (the server default) out of the list; keep the current values selectable.
+  // Chromium leaves UTC (the server default) out of the list; keep it and the current values selectable.
   const zones = useMemo(
-    () => [...new Set([...(me ? [me.timezone] : []), browserTz(), ...Intl.supportedValuesOf('timeZone')])],
+    () => [...new Set([...(me ? [me.timezone] : []), browserTz(), 'UTC', ...Intl.supportedValuesOf('timeZone')])],
     [me],
   )
   const save = useMutation({

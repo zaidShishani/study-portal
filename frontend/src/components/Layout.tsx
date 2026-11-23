@@ -23,6 +23,7 @@ const NAV = [
   { to: '/settings', label: 'Settings' },
 ]
 const LOGOUT_HINT = 'Available once login is set up'
+const VISUALLY_HIDDEN = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
 
 export default function Layout() {
   const theme = useTheme()
@@ -74,7 +75,13 @@ export default function Layout() {
               <Tooltip title={LOGOUT_HINT} describeChild>
                 {/* A disabled button can't take focus or hover; the wrapper lets the tooltip show for keyboard users. */}
                 <span tabIndex={0}>
-                  <Button disabled>Logout</Button>
+                  <Button disabled aria-describedby="logout-hint">
+                    Logout
+                  </Button>
+                  {/* Static description so screen readers get the reason without opening the tooltip. */}
+                  <Box component="span" id="logout-hint" sx={VISUALLY_HIDDEN}>
+                    {LOGOUT_HINT}
+                  </Box>
                 </span>
               </Tooltip>
             </>
@@ -84,12 +91,13 @@ export default function Layout() {
                 color="inherit"
                 aria-label="Open menu"
                 aria-haspopup="menu"
-                aria-expanded={menuAnchor ? 'true' : undefined}
+                aria-controls="main-menu"
+                aria-expanded={!!menuAnchor}
                 onClick={(e) => setMenuAnchor(e.currentTarget)}
               >
                 <MenuIcon />
               </IconButton>
-              <Menu anchorEl={menuAnchor} open={!!menuAnchor} onClose={closeMenu}>
+              <Menu id="main-menu" anchorEl={menuAnchor} open={!!menuAnchor} onClose={closeMenu}>
                 {NAV.map(({ to, label }) => (
                   <MenuItem
                     key={to}
