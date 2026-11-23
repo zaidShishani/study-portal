@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    BigInteger,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -49,7 +50,7 @@ class Notification(Base):
         Index("ix_notifications_user_id_read_at_fire_at", "user_id", "read_at", "fire_at"),
     )
 
-    id: Mapped[int] = mapped_column(Identity(), primary_key=True)
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"))
     occurrence_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))

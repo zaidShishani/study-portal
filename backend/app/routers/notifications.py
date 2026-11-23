@@ -1,20 +1,20 @@
 from datetime import UTC, datetime
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Path, Response
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_db
 from app.models.events import Event, Notification
 from app.models.users import User
-from app.schemas.common import Id
 from app.schemas.notifications import NotificationOut
 from app.services import notifications
 
 router = APIRouter(prefix="/api/notifications", tags=["notifications"])
 
 MAX_UNREAD = 50
+BigId = Annotated[int, Path(gt=0, le=2**63 - 1)]  # notifications.id is bigint
 
 
 @router.get("", response_model=list[NotificationOut])
@@ -41,7 +41,7 @@ def read_all(user: User = Depends(get_current_user), db: Session = Depends(get_d
 
 
 @router.post("/{notification_id}/read", status_code=204)
-def read_one(notification_id: Id, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
+def read_one(notification_id: BigId, user: User = Depends(get_current_user), db: Session = Depends(get_db)) -> Response:
     notification = db.scalar(
         select(Notification).where(Notification.id == notification_id, Notification.user_id == user.id)
     )

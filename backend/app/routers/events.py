@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, get_db
-from app.models.events import Event
+from app.models.events import Event, Notification
 from app.models.users import User
 from app.schemas.common import Id
 from app.schemas.events import EventCreate, EventOut, EventUpdate
@@ -68,6 +68,9 @@ def update_event(
     _check(*(changes.get(f, getattr(event, f)) for f in ("start_at", "end_at", "rrule")))
     for field, value in changes.items():
         setattr(event, field, value)
+    if changes.keys() & {"start_at", "end_at", "all_day", "rrule", "remind_minutes_before"}:
+        # Unread reminders may no longer match the event; the next sync recreates the due ones. Read ones stay.
+        db.execute(delete(Notification).where(Notification.event_id == event.id, Notification.read_at.is_(None)))
     db.commit()
     return event
 

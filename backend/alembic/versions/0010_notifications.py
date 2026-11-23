@@ -15,7 +15,7 @@ depends_on = None
 def upgrade() -> None:
     op.create_table(
         "notifications",
-        sa.Column("id", sa.Integer, sa.Identity(), primary_key=True),
+        sa.Column("id", sa.BigInteger, sa.Identity(), primary_key=True),
         sa.Column(
             "user_id", sa.Integer, sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
         ),

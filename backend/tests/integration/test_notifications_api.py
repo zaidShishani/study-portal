@@ -66,6 +66,22 @@ def test_deleting_event_removes_notifications(client: TestClient, db: Session):
     assert db.scalar(select(func.count()).select_from(Notification)) == 0
 
 
+def test_editing_event_replaces_unread_keeps_read(client: TestClient, db: Session):
+    event = add(db, 10)
+    (old,) = client.get(URL).json()
+    moved = event.start_at + timedelta(minutes=5)
+    r = client.patch(f"/api/events/{event.id}", json={"start_at": moved.isoformat()})
+    assert r.status_code == 200
+    (new,) = client.get(URL).json()
+    assert new["id"] != old["id"] and datetime.fromisoformat(new["occurrence_start"]) == moved
+
+    client.post(f"{URL}/{new['id']}/read")
+    assert client.patch(f"/api/events/{event.id}", json={"remind_minutes_before": 1}).status_code == 200
+    assert client.get(URL).json() == []  # read row kept, so the same occurrence is not recreated
+    assert client.patch(f"/api/events/{event.id}", json={"title": "Renamed"}).status_code == 200
+    assert db.scalar(select(func.count()).select_from(Notification)) == 1
+
+
 def test_list_is_newest_first_and_capped(client: TestClient, db: Session):
     events = [add(db, i + 1, title=f"E{i}") for i in range(55)]
     body = client.get(URL).json()

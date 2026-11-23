@@ -2,7 +2,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.events import Event, Notification
@@ -82,3 +82,23 @@ def test_idempotent_and_keeps_read_state(db: Session, user: User):
     sync(db, user, NOW + timedelta(minutes=1))
     assert rows(db) == first
     assert db.scalar(select(Notification).where(Notification.read_at.is_(None))) is None
+
+
+def test_resync_inserts_nothing(db: Session, user: User):
+    add(db, datetime(2026, 11, 1, 11, tzinfo=UTC), rrule="FREQ=DAILY")
+    sync(db, user, NOW)
+    sync(db, user, NOW)
+    last_id = db.scalar(select(func.max(Notification.id)))
+    add(db, NOW)
+    sync(db, user, NOW)
+    # The second sync burned no ids: ON CONFLICT would have consumed one per skipped row.
+    assert db.scalar(select(func.max(Notification.id))) == last_id + 1
+
+
+def test_prunes_rows_older_than_lookback(db: Session, user: User):
+    event = add(db, datetime(2026, 11, 1, 11, tzinfo=UTC), rrule="FREQ=DAILY")
+    sync(db, user, NOW)
+    sync(db, user, NOW + timedelta(days=2))
+    starts = [r[1] for r in rows(db)]
+    assert starts[0] == datetime(2026, 11, 16, 11, tzinfo=UTC) and len(starts) == 7
+    assert all(r[0] == event.id for r in rows(db))
