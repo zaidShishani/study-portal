@@ -1,10 +1,18 @@
 import type { ReactNode } from 'react'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { afterEach, expect, test, vi } from 'vitest'
-import { useMe } from './useMe'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { markTimezoneManual, useMe } from './useMe'
 
-const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone
+const browserTz = 'Europe/Amsterdam'
+
+beforeEach(() => {
+  localStorage.clear()
+  const real = Intl.DateTimeFormat.prototype.resolvedOptions
+  vi.spyOn(Intl.DateTimeFormat.prototype, 'resolvedOptions').mockImplementation(function (this: Intl.DateTimeFormat) {
+    return { ...real.call(this), timeZone: browserTz }
+  })
+})
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -31,17 +39,15 @@ function setup(meTz: string) {
   return { hook, patches, client }
 }
 
-test('PATCHes the browser timezone once when it differs', async () => {
-  const otherTz = browserTz === 'Pacific/Kiritimati' ? 'UTC' : 'Pacific/Kiritimati'
-  const { hook, patches } = setup(otherTz)
+test('PATCHes the browser timezone once when the server still has the UTC default', async () => {
+  const { hook, patches } = setup('UTC')
   await waitFor(() => expect(hook.result.current.data?.timezone).toBe(browserTz))
   expect(patches()).toHaveLength(1)
   expect(JSON.parse(String(patches()[0][1]?.body))).toEqual({ timezone: browserTz })
 })
 
 test('refreshes calendar and dashboard queries once the new timezone is saved', async () => {
-  const otherTz = browserTz === 'Pacific/Kiritimati' ? 'UTC' : 'Pacific/Kiritimati'
-  const { hook, client } = setup(otherTz)
+  const { hook, client } = setup('UTC')
   client.setQueryData(['calendar', { from: '2026-11-01', to: '2026-11-30' }], { events: [] })
   client.setQueryData(['dashboard'], { date: '2026-11-23' })
   await waitFor(() => expect(hook.result.current.data?.timezone).toBe(browserTz))
@@ -53,6 +59,19 @@ test('refreshes calendar and dashboard queries once the new timezone is saved', 
 
 test('does not PATCH when the timezone already matches', async () => {
   const { hook, patches } = setup(browserTz)
+  await waitFor(() => expect(hook.result.current.isSuccess).toBe(true))
+  expect(patches()).toHaveLength(0)
+})
+
+test('does not overwrite a non-default server timezone', async () => {
+  const { hook, patches } = setup('Asia/Tokyo')
+  await waitFor(() => expect(hook.result.current.isSuccess).toBe(true))
+  expect(patches()).toHaveLength(0)
+})
+
+test('does not overwrite a timezone saved manually, even UTC', async () => {
+  markTimezoneManual()
+  const { hook, patches } = setup('UTC')
   await waitFor(() => expect(hook.result.current.isSuccess).toBe(true))
   expect(patches()).toHaveLength(0)
 })

@@ -11,6 +11,7 @@ import ProblemPage from './pages/ProblemPage'
 import ReviewPage from './pages/ReviewPage'
 import RoadmapPage from './pages/RoadmapPage'
 import RoadmapsPage from './pages/RoadmapsPage'
+import SettingsPage from './pages/SettingsPage'
 import TodayPage from './pages/TodayPage'
 
 export default function App() {
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="roadmaps" element={<RoadmapsPage />} />
         <Route path="roadmaps/:roadmapId" element={<RoadmapPage />} />
         <Route path="calendar" element={<CalendarPage />} />
+        <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
