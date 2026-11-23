@@ -29,11 +29,12 @@ type Props = {
   // null = a stored rule the builder can't represent; it is shown read-only until replaced.
   value: RecurrenceState | null
   rawRule: string | null
+  start?: string // the event's local start date, to check the end date against
   onChange: (value: RecurrenceState) => void
 }
 
 // Needs a LocalizationProvider (AdapterDayjs) above it.
-export default function RecurrenceBuilder({ value, rawRule, onChange }: Props) {
+export default function RecurrenceBuilder({ value, rawRule, start, onChange }: Props) {
   if (!value) {
     return (
       <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
@@ -49,7 +50,7 @@ export default function RecurrenceBuilder({ value, rawRule, onChange }: Props) {
   }
 
   const set = (patch: Partial<RecurrenceState>) => onChange({ ...value, ...patch })
-  const error = recurrenceError(value)
+  const error = recurrenceError(value, start)
 
   return (
     <Stack spacing={2}>

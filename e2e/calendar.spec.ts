@@ -6,9 +6,13 @@ const day = (page: Page, date: string) => page.locator(`td.fc-daygrid-day[data-d
 test('create a weekly event, see it on the expected days, edit its title, delete it', async ({ page }) => {
   const title = `E2E event ${Date.now()}`
   const renamed = `${title} renamed`
-  // The Monday of the week holding the 8th: it and the next 9 days are always in this month.
-  const dates = await page.evaluate(() => {
+  // A month 2-4 years ahead, so existing data (or a failed earlier run) is unlikely to share its cells.
+  const months = 24 + (Date.now() % 24)
+  // The Monday of the week holding the 8th: it and the next 9 days are always in that month.
+  const dates = await page.evaluate((months) => {
     const d = new Date()
+    d.setDate(1)
+    d.setMonth(d.getMonth() + months)
     d.setDate(8)
     d.setDate(8 - ((d.getDay() + 6) % 7))
     return [0, 1, 2, 7, 9, 14].map((offset) => {
@@ -16,11 +20,13 @@ test('create a weekly event, see it on the expected days, edit its title, delete
       x.setDate(d.getDate() + offset)
       return x.toLocaleDateString('en-CA')
     })
-  })
+  }, months)
   const [mon, tue, wed, mon2, wed2, mon3] = dates
 
   await page.goto('/calendar')
-  await day(page, mon).click()
+  for (let i = 0; i < months; i++) await page.locator('.fc-next-button').click()
+  // The day-number strip, not the cell centre, which may hold an event.
+  await day(page, mon).locator('.fc-daygrid-day-top').click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { name: 'New event' })).toBeVisible()
   await dialog.getByLabel('Title').fill(title)

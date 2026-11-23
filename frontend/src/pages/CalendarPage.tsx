@@ -130,43 +130,52 @@ export default function CalendarPage() {
           {invalidCount} event(s) have a recurrence rule that can't be shown.
         </Alert>
       )}
-      <FullCalendar
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
-        // The browser's zone, which useMe keeps in sync with the user's (so /api/calendar dates match).
-        timeZone="local"
-        headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' }}
-        height="auto"
-        events={items}
-        datesSet={({ start, end }) => {
-          // end is exclusive; the API takes inclusive dates.
-          const next = { from: ymd(start), to: ymd(dayjs(end).subtract(1, 'day').toDate()) }
-          setRange((r) => (r?.from === next.from && r.to === next.to ? r : next))
+      {/* Toolbar wraps and the title shrinks so a phone-width screen doesn't scroll sideways. */}
+      <Box
+        sx={{
+          '& .fc-header-toolbar': { flexWrap: 'wrap', gap: 1 },
+          '& .fc-toolbar-title': { fontSize: { xs: '1.1rem', sm: '1.75em' } },
         }}
-        dateClick={({ date, allDay, view }) => {
-          // Month cells have no time: default to 09:00-10:00. Week slots give the time (or the all-day row).
-          const monthCell = view.type === 'dayGridMonth'
-          const start = monthCell ? dayjs(date).hour(9) : dayjs(date)
-          const isAllDay = allDay && !monthCell
-          setEditing({
-            id: null,
-            initial: {
-              title: '',
-              description: null,
-              start_at: start.format(),
-              end_at: (isAllDay ? start : start.add(1, 'hour')).format(),
-              all_day: isAllDay,
-              rrule: null,
-              remind_minutes_before: null,
-            },
-          })
-        }}
-        eventClick={({ event: clicked }) => {
-          const { to, eventId } = clicked.extendedProps
-          if (to) navigate(to)
-          else setEditing({ id: eventId })
-        }}
-      />
+      >
+        <FullCalendar
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          dayMaxEvents={3}
+          // The browser's zone, which useMe keeps in sync with the user's (so /api/calendar dates match).
+          timeZone="local"
+          headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek' }}
+          height="auto"
+          events={items}
+          datesSet={({ start, end }) => {
+            // end is exclusive; the API takes inclusive dates.
+            const next = { from: ymd(start), to: ymd(dayjs(end).subtract(1, 'day').toDate()) }
+            setRange((r) => (r?.from === next.from && r.to === next.to ? r : next))
+          }}
+          dateClick={({ date, allDay, view }) => {
+            // Month cells have no time: default to 09:00-10:00. Week slots give the time (or the all-day row).
+            const monthCell = view.type === 'dayGridMonth'
+            const start = monthCell ? dayjs(date).hour(9) : dayjs(date)
+            const isAllDay = allDay && !monthCell
+            setEditing({
+              id: null,
+              initial: {
+                title: '',
+                description: null,
+                start_at: start.format(),
+                end_at: (isAllDay ? start : start.add(1, 'hour')).format(),
+                all_day: isAllDay,
+                rrule: null,
+                remind_minutes_before: null,
+              },
+            })
+          }}
+          eventClick={({ event: clicked }) => {
+            const { to, eventId } = clicked.extendedProps
+            if (to) navigate(to)
+            else setEditing({ id: eventId })
+          }}
+        />
+      </Box>
 
       {editing && dialogInitial && (
         <EventDialog

@@ -28,7 +28,7 @@ function setup(meTz: string) {
   )
   const hook = renderHook(() => useMe(), { wrapper })
   const patches = () => fetchMock.mock.calls.filter(([, init]) => init?.method === 'PATCH')
-  return { hook, patches }
+  return { hook, patches, client }
 }
 
 test('PATCHes the browser timezone once when it differs', async () => {
@@ -37,6 +37,16 @@ test('PATCHes the browser timezone once when it differs', async () => {
   await waitFor(() => expect(hook.result.current.data?.timezone).toBe(browserTz))
   expect(patches()).toHaveLength(1)
   expect(JSON.parse(String(patches()[0][1]?.body))).toEqual({ timezone: browserTz })
+})
+
+test('refreshes calendar queries once the new timezone is saved', async () => {
+  const otherTz = browserTz === 'Pacific/Kiritimati' ? 'UTC' : 'Pacific/Kiritimati'
+  const { hook, client } = setup(otherTz)
+  client.setQueryData(['calendar', { from: '2026-11-01', to: '2026-11-30' }], { events: [] })
+  await waitFor(() => expect(hook.result.current.data?.timezone).toBe(browserTz))
+  await waitFor(() =>
+    expect(client.getQueryState(['calendar', { from: '2026-11-01', to: '2026-11-30' }])?.isInvalidated).toBe(true),
+  )
 })
 
 test('does not PATCH when the timezone already matches', async () => {

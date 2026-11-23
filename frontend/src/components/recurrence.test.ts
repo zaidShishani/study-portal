@@ -23,9 +23,14 @@ test.each([
   expect(parseRRule(rule)?.until).toBe('2026-12-31')
 })
 
-test('an UNTIL that is not the end of a local day is shown read-only', () => {
+test('any UNTIL time parses to the local date of that instant (rules saved in another zone)', () => {
   vi.stubEnv('TZ', 'America/Los_Angeles')
-  expect(parseRRule('FREQ=DAILY;UNTIL=20261231T235959Z')).toBeNull()
+  expect(parseRRule('FREQ=DAILY;UNTIL=20261231T235959Z')?.until).toBe('2026-12-31') // 15:59 PST
+  expect(parseRRule('FREQ=DAILY;UNTIL=20270101T020000Z')?.until).toBe('2026-12-31') // 18:00 PST
+  vi.stubEnv('TZ', 'Asia/Tokyo')
+  expect(parseRRule('FREQ=DAILY;UNTIL=20261231T235959Z')?.until).toBe('2027-01-01')
+  // Re-saving writes the end of that local day.
+  expect(buildRRule(parseRRule('FREQ=DAILY;UNTIL=20261231T120000Z')!)).toBe('FREQ=DAILY;INTERVAL=1;UNTIL=20261231T145959Z')
 })
 
 test('UNTIL across a DST change uses that day’s offset', () => {
@@ -84,7 +89,7 @@ test.each([
   'FREQ=DAILY;INTERVAL=367',
   'FREQ=DAILY;COUNT=0',
   'FREQ=DAILY;COUNT=1001',
-  'FREQ=DAILY;UNTIL=20261231T120000Z',
+  'FREQ=DAILY;UNTIL=20261399T000000Z',
   'FREQ=DAILY;UNTIL=20261231',
   'FREQ=DAILY;COUNT=3;UNTIL=20261231T235959Z',
   'FREQ=DAILY;FREQ=WEEKLY',
@@ -101,4 +106,8 @@ test('validation errors', () => {
   expect(recurrenceError(s({ freq: 'DAILY', end: 'until', until: '' }))).toMatch(/end date/)
   expect(recurrenceError(s({ freq: 'DAILY', end: 'count', count: 1001 }))).toMatch(/Occurrences/)
   expect(recurrenceError(s({ freq: 'NONE', interval: 0 }))).toBe('')
+  const until = s({ freq: 'DAILY', end: 'until', until: '2026-12-01' })
+  expect(recurrenceError(until, '2026-12-02')).toBe('End date must be on or after the start')
+  expect(recurrenceError(until, '2026-12-01')).toBe('')
+  expect(recurrenceError(until)).toBe('')
 })

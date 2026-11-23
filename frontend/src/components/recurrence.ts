@@ -20,11 +20,13 @@ export const NO_RECURRENCE: RecurrenceState = { freq: 'NONE', interval: 1, byDay
 
 const isInt = (n: number, max: number) => Number.isInteger(n) && n >= 1 && n <= max
 
-// '' when the state can be saved.
-export function recurrenceError(s: RecurrenceState): string {
+// '' when the state can be saved. `start` is the event's local start date (YYYY-MM-DD), if known.
+export function recurrenceError(s: RecurrenceState, start?: string): string {
   if (s.freq === 'NONE') return ''
   if (!isInt(s.interval, 366)) return 'Interval must be 1-366'
   if (s.end === 'until' && !/^\d{4}-\d{2}-\d{2}$/.test(s.until)) return 'Enter an end date'
+  // YYYY-MM-DD strings compare correctly as text.
+  if (s.end === 'until' && start && s.until < start) return 'End date must be on or after the start'
   if (s.end === 'count' && !isInt(s.count, 1000)) return 'Occurrences must be 1-1000'
   return ''
 }
@@ -33,12 +35,11 @@ export function recurrenceError(s: RecurrenceState): string {
 export const untilFromDate = (date: string) =>
   dayjs(date).endOf('day').toISOString().replace(/\.\d+Z$/, 'Z').replace(/[-:]/g, '')
 
-// The local date of an UNTIL instant, or null unless it is the end of a local day (i.e. builder-made).
+// The local date of an UNTIL instant (any time of day, so rules saved in another zone stay editable).
 function dateFromUntil(until: string): string | null {
   const m = until.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/)
-  if (!m) return null
-  const date = dayjs(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`).format('YYYY-MM-DD')
-  return untilFromDate(date) === until ? date : null
+  const d = m && dayjs(`${m[1]}-${m[2]}-${m[3]}T${m[4]}:${m[5]}:${m[6]}Z`)
+  return d?.isValid() ? d.format('YYYY-MM-DD') : null
 }
 
 export function buildRRule(s: RecurrenceState): string | null {

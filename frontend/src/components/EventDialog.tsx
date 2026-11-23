@@ -59,6 +59,7 @@ export default function EventDialog({ initial, pending = false, onSubmit, onDele
   const trimmed = title.trim()
   const customMinutes = Number(customRemind)
   const unit = allDay ? 'day' : 'minute'
+  const startDate = start?.isValid() ? start.format('YYYY-MM-DD') : undefined
   const errors = {
     title: !trimmed ? 'Title is required' : trimmed.length > MAX_TITLE ? `Max ${MAX_TITLE} characters` : '',
     description: description.length > MAX_TEXT ? 'Max 10,000 characters' : '',
@@ -68,7 +69,7 @@ export default function EventDialog({ initial, pending = false, onSubmit, onDele
       remindChoice === 'custom' && !(customRemind !== '' && Number.isInteger(customMinutes) && customMinutes >= 0 && customMinutes <= MAX_REMIND)
         ? `Enter 0-${MAX_REMIND} minutes`
         : '',
-    recurrence: recurrence ? recurrenceError(recurrence) : '',
+    recurrence: recurrence ? recurrenceError(recurrence, startDate) : '',
   }
 
   function handleSubmit(e: FormEvent) {
@@ -145,7 +146,7 @@ export default function EventDialog({ initial, pending = false, onSubmit, onDele
                   helperText={touched && errors.remind}
                 />
               )}
-              <RecurrenceBuilder value={recurrence} rawRule={initial.rrule} onChange={setRecurrence} />
+              <RecurrenceBuilder value={recurrence} rawRule={initial.rrule} start={startDate} onChange={setRecurrence} />
             </Stack>
           </LocalizationProvider>
         </DialogContent>
