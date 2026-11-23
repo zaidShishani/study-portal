@@ -314,7 +314,7 @@ export default function HomePage() {
             variant="determinate"
             value={selected.total_count ? (selected.done_count / selected.total_count) * 100 : 0}
             aria-label={`${selected.title} progress`}
-            sx={{ width: { xs: 64, sm: 120 }, height: 4 }}
+            sx={{ width: 120, height: 4, display: { xs: 'none', sm: 'block' } }}
           />
         </>
       ),
@@ -385,7 +385,8 @@ export default function HomePage() {
             sx={{
               order: CELLS[name].order,
               minWidth: 0,
-              height: expanded ? 'auto' : 280,
+              // One column: cards get a fixed 280px (lists scroll); the calendar stacks month over agenda, so it grows.
+              height: expanded || name === 'calendar' ? 'auto' : 280,
               // Another panel is expanded: gone in one column; hidden (still holding its cell) in the grid.
               display: focus && !expanded ? 'none' : 'block',
               [WIDE]: {
@@ -399,7 +400,7 @@ export default function HomePage() {
             <Card
               title={TITLES[name]}
               count={count}
-              tabs={tabs}
+              tabs={expanded ? undefined : tabs}
               actions={expanded ? undefined : actions}
               expanded={expanded}
               onExpand={expanded ? leave : () => navigate(focusUrl({ focus: name }))}

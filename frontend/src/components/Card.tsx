@@ -27,7 +27,7 @@ export default function Card({ title, count, tabs, actions, onExpand, expanded =
       sx={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0, height: '100%' }}
     >
       <Stack direction="row" sx={{ height: 48, flexShrink: 0, alignItems: 'center', gap: 1, px: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Typography id={titleId} variant="subtitle1" component="h2" noWrap>
+        <Typography id={titleId} variant="subtitle1" component="h2" noWrap sx={{ flexShrink: 0 }}>
           {title}
         </Typography>
         {count !== undefined && (

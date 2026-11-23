@@ -60,24 +60,24 @@ export default function CalendarCard({ today }: { today: string }) {
   }
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100%' }}>
-      <Box sx={{ flexShrink: 0, p: '8px 8px 8px 12px' }}>
-        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', pl: 0.5, mb: 0.5 }}>
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', minHeight: '100%' }}>
+      <Box sx={{ flexShrink: 0, p: '6px 8px 0 12px' }}>
+        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', height: 20, pl: 0.5 }}>
           <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
             {month.format('MMMM YYYY')}
           </Typography>
           <Box>
-            <IconButton size="small" aria-label="Previous month" onClick={() => page(-1)} sx={{ p: 0.25 }}>
+            <IconButton size="small" aria-label="Previous month" onClick={() => page(-1)} sx={{ p: 0, minHeight: 0 }}>
               <ChevronLeftIcon fontSize="small" />
             </IconButton>
-            <IconButton size="small" aria-label="Next month" onClick={() => page(1)} sx={{ p: 0.25 }}>
+            <IconButton size="small" aria-label="Next month" onClick={() => page(1)} sx={{ p: 0, minHeight: 0 }}>
               <ChevronRightIcon fontSize="small" />
             </IconButton>
           </Box>
         </Stack>
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 28px)', fontSize: 12 }}>
           {WEEKDAYS.map((w, i) => (
-            <Box key={i} aria-hidden sx={{ height: 18, textAlign: 'center', fontSize: 10, color: 'text.secondary' }}>
+            <Box key={i} aria-hidden sx={{ height: 16, textAlign: 'center', fontSize: 10, color: 'text.secondary' }}>
               {w}
             </Box>
           ))}
@@ -118,7 +118,7 @@ export default function CalendarCard({ today }: { today: string }) {
           })}
         </Box>
       </Box>
-      <Box sx={{ flex: 1, minWidth: 0, borderLeft: 1, borderColor: 'action.hover', p: '10px 14px' }}>
+      <Box sx={{ flex: '1 1 140px', minWidth: 0, borderLeft: 1, borderColor: 'action.hover', p: '10px 14px' }}>
         <Typography variant="overline" component="h3" sx={{ display: 'block', color: 'text.secondary', mb: 0.5 }}>
           {selected === today ? 'Today' : dayjs(selected).format('MMM D')}
         </Typography>
