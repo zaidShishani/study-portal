@@ -41,6 +41,7 @@ e2e/            # Playwright specs, run against docker compose
 
 ## Users / auth
 Auth is deferred. `users` table exists; migration seeds user id=1. `core/deps.get_current_user()` returns user 1. Every user-owned table has `user_id` (or reaches it through its parent). WorkOS AuthKit will later replace only `get_current_user()`.
+When WorkOS lands: SameSite cookies + CSRF/Origin check on state-changing routes; GET /api/notifications has side effects (sync).
 
 ## Review ladder (cards and problems)
 ```

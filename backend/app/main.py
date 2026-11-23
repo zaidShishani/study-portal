@@ -5,7 +5,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.routers import calendar, cards, dashboard, decks, events, me, notes, problems, review, roadmaps
+from app.routers import (
+    calendar,
+    cards,
+    dashboard,
+    decks,
+    events,
+    me,
+    notes,
+    notifications,
+    problems,
+    review,
+    roadmaps,
+)
 
 # shortcut: API docs (/docs, /openapi.json) are public; disable when deployed beyond localhost
 app = FastAPI(title="Study Portal")
@@ -47,3 +59,4 @@ app.include_router(roadmaps.router)
 app.include_router(events.router)
 app.include_router(calendar.router)
 app.include_router(dashboard.router)
+app.include_router(notifications.router)
