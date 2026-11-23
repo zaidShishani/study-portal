@@ -41,6 +41,7 @@ test('home grid: two columns on desktop, one column in sketch order with no hori
   const cards = await box('Flashcards')
   expect((await box('Calendar')).x).toBeGreaterThanOrEqual(cards.x + cards.width)
   expect((await box('Notes')).x).toBeGreaterThanOrEqual(cards.x + cards.width)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1280)
 
   await page.setViewportSize({ width: 375, height: 800 })
   const ys: number[] = []

@@ -23,7 +23,8 @@ const NAV = [
   { to: '/settings', label: 'Settings' },
 ]
 const LOGOUT_HINT = 'Available once login is set up'
-const VISUALLY_HIDDEN = { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
+// '1px', not 1: in sx a number <= 1 is a fraction (100%), which pushed the page wider than the viewport.
+const VISUALLY_HIDDEN = { position: 'absolute', width: '1px', height: '1px', overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' } as const
 
 export default function Layout() {
   const theme = useTheme()
