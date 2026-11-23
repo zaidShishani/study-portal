@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Box, List, ListItemButton, ListItemText, Typography } from '@mui/material'
+import { Box, Button, List, ListItemButton, ListItemText, Typography } from '@mui/material'
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
@@ -104,12 +104,13 @@ export default function CalendarCard({ today }: { today: string }) {
             <ListItemText sx={{ minWidth: 0, overflowWrap: 'anywhere' }} primary={item.primary} secondary={item.secondary} />
           </ListItemButton>
         ))}
-        {items.length > MAX_ITEMS && (
-          <ListItemButton component={Link} to={focusUrl({ focus: 'calendar' })}>
-            <ListItemText primary={`+${items.length - MAX_ITEMS} more`} slotProps={{ primary: { color: 'text.secondary' } }} />
-          </ListItemButton>
-        )}
       </List>
+      {/* Same look as the home panels' "Show all (N)". */}
+      {items.length > MAX_ITEMS && (
+        <Button size="small" component={Link} to={focusUrl({ focus: 'calendar' })} sx={{ display: 'flex', ml: -1, mb: 1 }}>
+          Show all ({items.length})
+        </Button>
+      )}
     </>
   )
 }

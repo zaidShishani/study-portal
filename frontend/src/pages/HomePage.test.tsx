@@ -74,7 +74,7 @@ function renderPage(
       ? Response.json(body, { status })
       : url.startsWith('/api/calendar?')
         ? Response.json(cal)
-        : url === '/api/notes/pages/recent?limit=8'
+        : url === '/api/notes/pages/recent?limit=6'
           ? Response.json(pages)
           : url === '/api/notes/pages' && init?.method === 'POST'
             ? Response.json({ id: 42, title: 'Untitled', folder_id: null, content: '' }, { status: 201 })
@@ -157,7 +157,7 @@ test('mini month: dots on busy days, today agenda, day selection, capped list, m
 
   fireEvent.click(day('28'))
   expect(within(cal).getAllByRole('link', { name: /Step/ })).toHaveLength(6)
-  expect(href(cal, '+2 more')).toBe('/?focus=calendar')
+  expect(href(cal, 'Show all (8)')).toBe('/?focus=calendar')
 
   fireEvent.click(within(cal).getByRole('button', { name: 'Next month' }))
   await waitFor(() =>
@@ -173,6 +173,7 @@ test('notes card: recent pages with folder and relative time; New page opens it 
   expect(await within(notes).findByText(`Algorithms · ${rtf.format(-3, 'hour')}`)).toBeTruthy()
   expect(within(notes).getByText(`Root · ${rtf.format(0, 'second')}`)).toBeTruthy()
   expect(href(notes, /Graphs/)).toBe('/?focus=notes&page=5')
+  expect(within(notes).queryByRole('button', { name: 'Show all' })).toBeNull()
 
   fireEvent.click(within(notes).getByRole('button', { name: 'New page' }))
   await waitFor(() => expect(search()).toBe('?focus=notes&page=42'))
@@ -197,6 +198,16 @@ test('panels cap rows at 5 with a Show all button that expands the panel', async
   expect(within(panel('Flashcards')).queryByRole('button', { name: 'Show all (5)' })).toBeNull()
   fireEvent.click(within(panel('LeetCode')).getByRole('button', { name: 'Show all (7)' }))
   expect(search()).toBe('?focus=leetcode')
+})
+
+test('notes card shows 5 recent pages and a Show all button when there are more', async () => {
+  const six = Array.from({ length: 6 }, (_, i) => ({ id: i + 1, title: `Page ${i + 1}`, folder_id: null, folder_name: null, updated_at: ago(0) }))
+  renderPage(full, { pages: six })
+  const notes = panel('Notes')
+  expect(await within(notes).findByText('Page 5')).toBeTruthy()
+  expect(within(notes).queryByText('Page 6')).toBeNull()
+  fireEvent.click(within(notes).getByRole('button', { name: 'Show all' }))
+  expect(search()).toBe('?focus=notes')
 })
 
 test('a nested view whose h1 waits for data gets focus once the h1 appears', async () => {

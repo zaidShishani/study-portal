@@ -16,7 +16,8 @@ export const deleteFolder = (id: number) => api<void>(`/notes/folders/${id}`, { 
 export const listPages = (folderId: number | null) =>
   api<NotePageItem[]>(folderId === null ? '/notes/pages' : `/notes/pages?folder_id=${folderId}`)
 
-export const listRecentPages = () => api<RecentPage[]>('/notes/pages/recent?limit=8')
+// 5 rows show on home; the 6th only tells it there are more.
+export const listRecentPages = () => api<RecentPage[]>('/notes/pages/recent?limit=6')
 
 export const getPage = (id: number) => api<NotePage>(`/notes/pages/${id}`)
 

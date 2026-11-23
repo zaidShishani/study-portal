@@ -124,10 +124,10 @@ export default function HomePage() {
   }
 
   const expand = (name: PanelName) => () => navigate(focusUrl({ focus: name }))
-  const showAll = (name: PanelName, total: number) =>
+  const showAll = (name: PanelName, total: number, label = `Show all (${total})`) =>
     total > MAX_ROWS && (
       <Button size="small" onClick={expand(name)} sx={{ display: 'flex', ml: -1, mb: 1 }}>
-        Show all ({total})
+        {label}
       </Button>
     )
   const loading = isPending && <CircularProgress aria-label="Loading" size={24} />
@@ -216,13 +216,15 @@ export default function HomePage() {
           {recent.data?.length === 0 && <Empty>No pages yet.</Empty>}
           {recent.data && (
             <List dense sx={{ mx: -2 }}>
-              {recent.data.map((p) => (
+              {recent.data.slice(0, MAX_ROWS).map((p) => (
                 <ListItemButton key={p.id} component={Link} to={focusUrl({ focus: 'notes', page: p.id })}>
                   <ListItemText sx={wrap} primary={p.title} secondary={`${p.folder_name ?? 'Root'} · ${timeAgo(p.updated_at)}`} />
                 </ListItemButton>
               ))}
             </List>
           )}
+          {/* The API returns one row past the cap, so the total pages count is unknown here. */}
+          {recent.data && showAll('notes', recent.data.length, 'Show all')}
           {createPage.error && <Typography color="error">{createPage.error.message}</Typography>}
           <Button
             variant="contained"
