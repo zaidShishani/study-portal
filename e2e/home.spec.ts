@@ -34,13 +34,21 @@ test('expand a panel, open a nested view, then refresh, browser Back and Escape 
   await at('/')
 })
 
-test('home grid: two columns on desktop, one column in sketch order with no horizontal scroll at 375px', async ({ page }) => {
+test('home layout: two independent columns on desktop, one column in sketch order with no horizontal scroll at 375px', async ({ page }) => {
   const box = async (name: string) => (await page.getByRole('region', { name }).boundingBox())!
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/')
   const cards = await box('Flashcards')
   expect((await box('Calendar')).x).toBeGreaterThanOrEqual(cards.x + cards.width)
   expect((await box('Notes')).x).toBeGreaterThanOrEqual(cards.x + cards.width)
+  // Independent columns: each card sits 24px under the one above it in its own column, whatever the other column's heights.
+  const below = async (upper: string, lower: string) => {
+    const [u, l] = [await box(upper), await box(lower)]
+    expect(Math.round(l.y - (u.y + u.height))).toBe(24)
+  }
+  await below('Flashcards', 'LeetCode')
+  await below('LeetCode', 'Roadmaps')
+  await below('Calendar', 'Notes')
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1280)
 
   await page.setViewportSize({ width: 375, height: 800 })
