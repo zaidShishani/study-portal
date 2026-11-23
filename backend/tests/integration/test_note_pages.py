@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -153,3 +155,55 @@ def test_out_of_range_id_is_422(client: TestClient):
     assert client.patch(f"{URL}/{big}", json={"title": "x"}).status_code == 422
     assert client.delete(f"{URL}/{big}").status_code == 422
     assert client.get(URL, params={"folder_id": big}).status_code == 422
+
+
+RECENT = f"{URL}/recent"
+
+
+def test_recent_pages_order_after_edit(client: TestClient, db: Session):
+    folder = make_folder(db, "Algo")
+    old, mid, new = make_page(db, "old"), make_page(db, "mid", folder.id), make_page(db, "new")
+    # now() is constant within the test transaction, so give each page a distinct past time.
+    for i, page in enumerate((old, mid, new)):
+        page.updated_at = datetime(2020, 1, 1 + i, tzinfo=UTC)
+    db.flush()
+
+    r = client.get(RECENT)
+    assert r.status_code == 200
+    assert [p["id"] for p in r.json()] == [new.id, mid.id, old.id]
+    assert set(r.json()[0]) == LIST_KEYS | {"folder_name"}  # no content
+    assert r.json()[0]["folder_name"] is None  # root page
+    assert r.json()[1]["folder_name"] == "Algo"
+
+    assert client.patch(f"{URL}/{old.id}", json={"title": "edited"}).status_code == 200
+    assert [p["id"] for p in client.get(RECENT).json()] == [old.id, new.id, mid.id]
+
+
+def test_recent_pages_ties_break_by_id_desc(client: TestClient, db: Session):
+    a, b = make_page(db, "a"), make_page(db, "b")  # same now() -> same updated_at
+    assert [p["id"] for p in client.get(RECENT).json()] == [b.id, a.id]
+
+
+def test_recent_pages_limit(client: TestClient, db: Session):
+    pages = [make_page(db, f"p{i}") for i in range(10)]
+    assert len(client.get(RECENT).json()) == 8
+    assert [p["id"] for p in client.get(RECENT, params={"limit": 3}).json()] == [p.id for p in pages[:-4:-1]]
+    assert len(client.get(RECENT, params={"limit": 20}).json()) == 10
+
+
+@pytest.mark.parametrize("limit", [0, 21, -1, "x"])
+def test_recent_pages_limit_bounds(client: TestClient, limit):
+    assert client.get(RECENT, params={"limit": limit}).status_code == 422
+
+
+def test_recent_pages_other_user_isolation(client: TestClient, db: Session, other_user: User):
+    make_page(db, "User 1 root")
+    make_page(db, "User 1 in folder", make_folder(db).id)
+    own = make_page(db, "Other's", user_id=other_user.id)
+    assert [p["id"] for p in client.get(RECENT).json()] == [own.id]
+
+
+def test_recent_route_does_not_shadow_page_by_id(client: TestClient, db: Session):
+    page = make_page(db)
+    assert client.get(f"{URL}/{page.id}").json()["content"] == "body"
+    assert client.get(RECENT).status_code == 200

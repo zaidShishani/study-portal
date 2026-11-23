@@ -1,6 +1,16 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, ForeignKeyConstraint, Identity, String, Text, UniqueConstraint, func
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Identity,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.db import Base
@@ -39,6 +49,7 @@ class NotePage(Base):
             name="fk_note_pages_folder_owner",
             ondelete="CASCADE",
         ),
+        Index("ix_note_pages_user_id_updated_at", "user_id", "updated_at"),
     )
 
     id: Mapped[int] = mapped_column(Identity(), primary_key=True)
