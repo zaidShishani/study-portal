@@ -6,6 +6,8 @@ test('create deck, add card, review Right, card leaves the queue', async ({ page
   const title = `E2E deck ${Date.now()}`
   await page.goto('/')
   await page.getByRole('button', { name: 'Expand Flashcards' }).click()
+  // Home's header has its own New deck; wait for the expanded view so the click hits the page's button.
+  await expect(page.getByRole('heading', { level: 1, name: 'Flashcards' })).toBeVisible()
   await page.getByRole('button', { name: 'New deck' }).click()
   await page.getByRole('dialog').getByLabel('Title').fill(title)
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
