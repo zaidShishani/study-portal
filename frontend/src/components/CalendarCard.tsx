@@ -5,6 +5,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useCalendar } from '../hooks/useCalendar'
+import { WIDE_QUERY } from '../hooks/useExpandFlip'
 import { focusUrl } from '../hooks/useFocus'
 import { fonts } from '../theme/tokens'
 import type { CalendarData } from '../types'
@@ -13,6 +14,10 @@ const ymd = (d: Dayjs | string) => dayjs(d).format('YYYY-MM-DD')
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 type Item = { key: string; time: string; title: string; to: string }
+
+// One summary line per kind, so a busy day doesn't push events out of the small card.
+const count = (key: string, n: number, noun: string, to: string): Item[] =>
+  n ? [{ key, time: '—', title: `${n} ${noun}${n === 1 ? '' : 's'} due`, to }] : []
 
 // Everything on local date `day`. Events count on every day they cover (all-day ends are exclusive).
 function itemsOn(data: CalendarData | undefined, day: string): Item[] {
@@ -31,15 +36,9 @@ function itemsOn(data: CalendarData | undefined, day: string): Item[] {
       title: e.title,
       to: focusUrl({ focus: 'calendar' }),
     })),
-    ...(cards
-      ? [{ key: 'cards', time: '—', title: `${cards} ${cards === 1 ? 'card' : 'cards'} due`, to: focusUrl({ focus: 'flashcards', review: 'all' }) }]
-      : []),
-    ...data.problems_due
-      .filter((p) => p.date === day)
-      .map((p) => ({ key: `p-${p.id}`, time: '—', title: p.title, to: focusUrl({ focus: 'leetcode', problem: p.id }) })),
-    ...data.checkpoints
-      .filter((c) => c.date === day)
-      .map((c) => ({ key: `c-${c.id}`, time: '—', title: c.title, to: focusUrl({ focus: 'roadmaps', roadmap: c.roadmap_id }) })),
+    ...count('cards', cards ?? 0, 'card', focusUrl({ focus: 'flashcards', review: 'all' })),
+    ...count('problems', data.problems_due.filter((p) => p.date === day).length, 'problem', focusUrl({ focus: 'leetcode' })),
+    ...count('checkpoints', data.checkpoints.filter((c) => c.date === day).length, 'checkpoint', focusUrl({ focus: 'roadmaps' })),
   ]
 }
 
@@ -60,7 +59,8 @@ export default function CalendarCard({ today }: { today: string }) {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', minHeight: '100%' }}>
+    // Side by side on wide screens (never wraps); stacked in the one-column layout.
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', minHeight: '100%', [`@media ${WIDE_QUERY}`]: { gridTemplateColumns: '216px minmax(0, 1fr)' } }}>
       <Box sx={{ flexShrink: 0, p: '6px 8px 0 12px' }}>
         <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', height: 20, pl: 0.5 }}>
           <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
@@ -118,7 +118,7 @@ export default function CalendarCard({ today }: { today: string }) {
           })}
         </Box>
       </Box>
-      <Box sx={{ flex: '1 1 140px', minWidth: 0, borderLeft: 1, borderColor: 'action.hover', p: '10px 14px' }}>
+      <Box sx={{ minWidth: 0, borderTop: 1, borderColor: 'action.hover', p: '10px 14px', [`@media ${WIDE_QUERY}`]: { borderTop: 0, borderLeft: 1 } }}>
         <Typography variant="overline" component="h3" sx={{ display: 'block', color: 'text.secondary', mb: 0.5 }}>
           {selected === today ? 'Today' : dayjs(selected).format('MMM D')}
         </Typography>

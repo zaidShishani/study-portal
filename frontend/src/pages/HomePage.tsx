@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Box, Button, Checkbox, CircularProgress, LinearProgress, Stack, Typography } from '@mui/material'
+import { Box, Button, Checkbox, CircularProgress, LinearProgress, NativeSelect, Stack, Typography, type Theme } from '@mui/material'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import CalendarCard from '../components/CalendarCard'
 import Card from '../components/Card'
@@ -22,6 +22,7 @@ import RoadmapPage from './RoadmapPage'
 import RoadmapsPage from './RoadmapsPage'
 
 const WIDE = `@media ${WIDE_QUERY}`
+const PHONE = (t: Theme) => t.breakpoints.down('sm')
 const TITLES: Record<PanelName, string> = {
   flashcards: 'Flashcards',
   leetcode: 'LeetCode',
@@ -149,7 +150,8 @@ function Recent() {
       {!data.length && <Note>No pages yet.</Note>}
       {data.map((p) => (
         <ListRow key={p.id} to={focusUrl({ focus: 'notes', page: p.id })}>
-          <Box sx={{ minWidth: 0, py: 0.75 }}>
+          {/* 47 + the 1px divider = a 48px row. */}
+          <Box sx={{ minWidth: 0, height: 47, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <Box sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</Box>
             <Typography variant="body2" color="text.secondary" noWrap>
               {`${p.folder_name ?? 'Root'} · ${timeAgo(p.updated_at)}`}
@@ -268,8 +270,23 @@ export default function HomePage() {
       body: <LeetCode today={date} />,
     },
     roadmaps: {
-      tabs: (
-        <Stack direction="row" sx={{ gap: 0.5, ml: 1, minWidth: 0, overflowX: 'auto' }}>
+      tabs: roadmaps.data && roadmaps.data.length > 0 && (
+        <>
+        {/* Phone width: a compact select instead of a tab strip that can't fit the 48px header. */}
+        <NativeSelect
+          value={selected?.id}
+          onChange={(e) => setRoadmapTab(Number(e.target.value))}
+          inputProps={{ 'aria-label': 'Roadmap' }}
+          disableUnderline
+          sx={(t) => ({ display: 'none', minWidth: 0, ml: 1, fontSize: 13, [PHONE(t)]: { display: 'inline-flex' } })}
+        >
+          {roadmaps.data.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.title}
+            </option>
+          ))}
+        </NativeSelect>
+        <Stack direction="row" sx={(t) => ({ gap: 0.5, ml: 1, minWidth: 0, overflowX: 'auto', [PHONE(t)]: { display: 'none' } })}>
           {roadmaps.data?.map((r) => (
             <Button
               key={r.id}
@@ -283,10 +300,11 @@ export default function HomePage() {
             </Button>
           ))}
         </Stack>
+        </>
       ),
       actions: selected && (
         <>
-          <Typography variant="body2" sx={{ ...mono, color: 'text.secondary', whiteSpace: 'nowrap' }}>
+          <Typography variant="body2" sx={(t) => ({ ...mono, color: 'text.secondary', whiteSpace: 'nowrap', [PHONE(t)]: { display: 'none' } })}>
             {selected.done_count} / {selected.total_count}
           </Typography>
           <LinearProgress
