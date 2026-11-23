@@ -11,7 +11,7 @@ import type { CalendarData } from '../types'
 
 const MAX_ITEMS = 6
 const ymd = (d: Dayjs | string) => dayjs(d).format('YYYY-MM-DD')
-const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+const time = (iso: string) => dayjs(iso).format('h:mm A')
 
 type Item = { key: string; primary: string; secondary: string; to: string }
 
@@ -28,7 +28,10 @@ function itemsOn(data: CalendarData | undefined, day: string): Item[] {
     ...events.map((e) => ({
       key: `e-${e.event_id}-${e.start}`,
       primary: e.title,
-      secondary: e.all_day ? 'All day' : e.end ? `${time(e.start)} – ${time(e.end)}` : time(e.start),
+      // An overnight event seen on a later day names its start date.
+      secondary: e.all_day
+        ? 'All day'
+        : `${ymd(e.start) === day ? '' : `${dayjs(e.start).format('MMM D')}, `}${time(e.start)}${e.end ? ` – ${time(e.end)}` : ''}`,
       to: focusUrl({ focus: 'calendar' }),
     })),
     ...(cards
@@ -57,10 +60,12 @@ export default function CalendarCard({ today }: { today: string }) {
         <DateCalendar
           value={dayjs(selected)}
           onChange={(d) => d && setSelected(ymd(d))}
-          // Paging keeps the agenda inside the fetched month: today for the current month, else the 1st.
+          // Paging keeps the agenda inside the fetched month: the selection if it's there, else today or the 1st.
           onMonthChange={(m) => {
             setMonth(m.startOf('month'))
-            setSelected(ymd(m) === ymd(dayjs(today).startOf('month')) ? today : ymd(m.startOf('month')))
+            setSelected((sel) =>
+              dayjs(sel).isSame(m, 'month') ? sel : dayjs(today).isSame(m, 'month') ? today : ymd(m.startOf('month')),
+            )
           }}
           slotProps={{
             day: ({ day, isDayOutsideMonth }) =>
@@ -107,7 +112,7 @@ export default function CalendarCard({ today }: { today: string }) {
       </List>
       {/* Same look as the home panels' "Show all (N)". */}
       {items.length > MAX_ITEMS && (
-        <Button size="small" component={Link} to={focusUrl({ focus: 'calendar' })} sx={{ display: 'flex', ml: -1, mb: 1 }}>
+        <Button size="small" component={Link} to={focusUrl({ focus: 'calendar' })} sx={{ display: 'flex', px: 1, ml: -1, mb: 1 }}>
           Show all ({items.length})
         </Button>
       )}

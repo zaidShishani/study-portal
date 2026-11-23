@@ -47,6 +47,7 @@ const local = (d: number, h: number) => new Date(2026, 10, d, h).toISOString()
 const calendar: CalendarData = {
   events: [
     { event_id: 1, title: 'Standup', start: local(23, 9), end: local(23, 10), all_day: false },
+    { event_id: 3, title: 'Night shift', start: local(23, 22), end: local(24, 2), all_day: false },
     // All-day, Nov 24-25 (end is exclusive).
     { event_id: 2, title: 'Trip', start: local(24, 0), end: local(26, 0), all_day: true },
   ],
@@ -58,6 +59,7 @@ const calendar: CalendarData = {
   ],
   truncated: false,
 }
+const note5 = { id: 5, title: 'Graphs', folder_id: null, content: 'old', updated_at: '2026-11-23T00:00:00Z', created_at: '2026-11-23T00:00:00Z' }
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString()
 const recent: RecentPage[] = [
   { id: 5, title: 'Graphs', folder_id: 2, folder_name: 'Algorithms', updated_at: ago(3 * 3600_000) },
@@ -78,6 +80,10 @@ function renderPage(
           ? Response.json(pages)
           : url === '/api/notes/pages' && init?.method === 'POST'
             ? Response.json({ id: 42, title: 'Untitled', folder_id: null, content: '' }, { status: 201 })
+            : url === '/api/notes/folders' || url === '/api/notes/pages'
+              ? Response.json(url.endsWith('pages') ? [note5] : [])
+              : url === '/api/notes/pages/5'
+                ? Response.json(note5)
             : url === '/api/decks' || url === '/api/roadmaps' || url.startsWith('/api/problems?') || url.startsWith('/api/review/')
               ? Response.json([])
               : Response.json({ detail: 'Not found' }, { status: 404 }),
@@ -138,11 +144,15 @@ test('mini month: dots on busy days, today agenda, day selection, capped list, m
   for (const n of ['22', '26']) expect(day(n).getAttribute('aria-description')).toBeNull()
 
   expect(within(cal).getByText('Agenda for today')).toBeTruthy()
-  const time = (h: number) => new Date(2026, 10, 23, h).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  expect(within(cal).getByText(`${time(9)} – ${time(10)}`)).toBeTruthy()
+  expect(within(cal).getByText('9:00 AM – 10:00 AM')).toBeTruthy()
+  expect(within(cal).getByText('10:00 PM – 2:00 AM')).toBeTruthy()
   expect(href(cal, /Standup/)).toBe('/?focus=calendar')
   expect(href(cal, /1 card due/)).toBe('/?focus=flashcards&review=all')
   expect(href(cal, /Two Sum/)).toBe('/?focus=leetcode&problem=7')
+
+  // An overnight event on its second day names its start date.
+  fireEvent.click(day('24'))
+  expect(within(cal).getByText('Nov 23, 10:00 PM – 2:00 AM')).toBeTruthy()
 
   fireEvent.click(day('25'))
   expect(within(cal).getByText('Agenda for Nov 25')).toBeTruthy()
@@ -302,4 +312,29 @@ test('invalid ids fall back to the panel list; an unknown panel shows the grid',
 test('parseId accepts positive integers only', () => {
   expect(parseId('42')).toBe(42)
   for (const v of [null, '', '0', '-3', '07', '1.0', ' 1', '1x', '1234567890']) expect(parseId(v)).toBeUndefined()
+})
+
+test('double-clicking New page creates one page', async () => {
+  const fetchMock = renderPage(full)
+  const button = await within(panel('Notes')).findByRole('button', { name: 'New page' })
+  fireEvent.click(button)
+  fireEvent.click(button)
+  await waitFor(() => expect(search()).toBe('?focus=notes&page=42'))
+  expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1)
+})
+
+test('leaving the notes view with unsaved edits asks first (back arrow and Escape)', async () => {
+  renderPage(full, { path: '/?focus=notes&page=5' })
+  fireEvent.change(await screen.findByLabelText('Content'), { target: { value: 'draft' } })
+  const confirm = vi.fn(() => false)
+  vi.stubGlobal('confirm', confirm)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Back to home' }))
+  fireEvent.keyDown(document.body, { key: 'Escape' })
+  expect(confirm).toHaveBeenCalledTimes(2)
+  expect(search()).toBe('?focus=notes&page=5')
+
+  confirm.mockReturnValue(true)
+  fireEvent.click(screen.getByRole('button', { name: 'Back to home' }))
+  expect(search()).toBe('')
 })

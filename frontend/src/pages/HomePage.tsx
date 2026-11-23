@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, type ReactNode } from 'react'
 import { Box, Button, Chip, CircularProgress, List, ListItemButton, ListItemText, Stack, Typography } from '@mui/material'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import CalendarCard from '../components/CalendarCard'
@@ -50,6 +50,10 @@ export default function HomePage() {
   const { data, error, isPending } = useToday()
   const recent = useRecentPages()
   const createPage = useCreatePage()
+  // isPending lands a render late; the ref blocks a same-tick double click.
+  const creating = useRef(false)
+  // The notes view reports unsaved edits so leaving it (back arrow, Escape) can ask first.
+  const notesDirty = useRef(false)
   const focusBox = useRef<HTMLDivElement>(null)
   const lastFocus = useRef(focus)
   const lastSearch = useRef(search)
@@ -86,6 +90,12 @@ export default function HomePage() {
     return () => observer.disconnect()
   }, [focus, search])
 
+  const leave = useCallback(() => {
+    if (notesDirty.current && !window.confirm('Discard unsaved changes?')) return
+    notesDirty.current = false
+    navigate('/')
+  }, [navigate])
+
   useEffect(() => {
     if (!focus) return
     function onKey(e: KeyboardEvent) {
@@ -93,11 +103,11 @@ export default function HomePage() {
       // Dialogs and menus stop their own Escape; leave text fields alone so Escape there never drops the view.
       if (e.key !== 'Escape' || e.defaultPrevented || t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName))
         return
-      navigate('/')
+      leave()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [focus, navigate])
+  }, [focus, leave])
 
   if (focus) {
     const view = {
@@ -112,11 +122,13 @@ export default function HomePage() {
       leetcode: problem ? <ProblemPage problemId={problem} /> : <LeetCodePage />,
       roadmaps: roadmap ? <RoadmapPage roadmapId={roadmap} /> : <RoadmapsPage />,
       calendar: <CalendarPage />,
-      notes: <NotesPage initialPageId={page} />,
+      notes: <NotesPage initialPageId={page} onDirtyChange={(d) => {
+            notesDirty.current = d
+          }} />,
     }[focus]
     return (
       <Box ref={focusBox} tabIndex={-1} sx={{ outline: 'none', '& h1:focus': { outline: 'none' } }}>
-        <Panel title={TITLES[focus]} onBack={() => navigate('/')}>
+        <Panel title={TITLES[focus]} onBack={leave}>
           {view}
         </Panel>
       </Box>
@@ -126,7 +138,8 @@ export default function HomePage() {
   const expand = (name: PanelName) => () => navigate(focusUrl({ focus: name }))
   const showAll = (name: PanelName, total: number, label = `Show all (${total})`) =>
     total > MAX_ROWS && (
-      <Button size="small" onClick={expand(name)} sx={{ display: 'flex', ml: -1, mb: 1 }}>
+      // px = -ml, so the label lines up with the list text above.
+      <Button size="small" onClick={expand(name)} sx={{ display: 'flex', px: 1, ml: -1, mb: 1 }}>
         {label}
       </Button>
     )
@@ -229,12 +242,19 @@ export default function HomePage() {
           <Button
             variant="contained"
             disabled={createPage.isPending}
-            onClick={() =>
+            onClick={() => {
+              if (creating.current) return
+              creating.current = true
               createPage.mutate(
                 { title: 'Untitled', folder_id: null },
-                { onSuccess: (p) => navigate(focusUrl({ focus: 'notes', page: p.id })) },
+                {
+                  onSuccess: (p) => navigate(focusUrl({ focus: 'notes', page: p.id })),
+                  onSettled: () => {
+                    creating.current = false
+                  },
+                },
               )
-            }
+            }}
           >
             New page
           </Button>
