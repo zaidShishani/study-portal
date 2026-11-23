@@ -18,6 +18,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import ConfirmDialog from '../components/ConfirmDialog'
 import DeckDialog from '../components/DeckDialog'
 import { useCreateDeck, useDecks, useDeleteDeck, useRenameDeck } from '../hooks/useDecks'
+import { focusUrl } from '../hooks/useFocus'
 import type { Deck } from '../types'
 
 export default function FlashcardsPage() {
@@ -66,7 +67,7 @@ export default function FlashcardsPage() {
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
         {decks.data?.map((deck) => (
           <Card key={deck.id} variant="outlined">
-            <CardActionArea component={Link} to={`/flashcards/${deck.id}`}>
+            <CardActionArea component={Link} to={focusUrl({ focus: 'flashcards', deck: deck.id })}>
               <CardContent>
                 <Typography variant="h6" component="h2" noWrap title={deck.title}>
                   {deck.title}

@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Box, Button, Chip, Link, Snackbar, Stack, Typography } from '@mui/material'
 import AttemptDialog from '../components/AttemptDialog'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -14,12 +14,12 @@ import {
   useUnretireProblem,
   useUpdateProblem,
 } from '../hooks/useProblems'
+import { focusUrl } from '../hooks/useFocus'
 import { DIFFICULTY_COLOR, RESULT_LABELS, type ProblemInput } from '../types'
 
-export default function ProblemPage() {
-  const { problemId = '' } = useParams()
+export default function ProblemPage({ problemId }: { problemId: number }) {
   const navigate = useNavigate()
-  const query = useProblem(problemId)
+  const query = useProblem(String(problemId))
   const updateProblem = useUpdateProblem()
   const deleteProblem = useDeleteProblem()
   const attemptProblem = useAttemptProblem()
@@ -33,14 +33,13 @@ export default function ProblemPage() {
   const onError = (err: Error) => setMessage(err.message)
   const p = query.data
 
-  // 422 = non-numeric id in the URL.
-  if (query.error instanceof ApiError && [404, 422].includes(query.error.status)) {
+  if (query.error instanceof ApiError && query.error.status === 404) {
     return (
       <>
         <Typography variant="h4" component="h1" gutterBottom>
           Problem not found
         </Typography>
-        <Link component={RouterLink} to="/leetcode">
+        <Link component={RouterLink} to={focusUrl({ focus: 'leetcode' })}>
           Back to LeetCode
         </Link>
       </>
@@ -61,7 +60,7 @@ export default function ProblemPage() {
 
   function confirmDelete() {
     setDeleteOpen(false)
-    deleteProblem.mutate(p!.id, { onSuccess: () => navigate('/leetcode'), onError })
+    deleteProblem.mutate(p!.id, { onSuccess: () => navigate(focusUrl({ focus: 'leetcode' })), onError })
   }
 
   const details: [string, ReactNode][] = [

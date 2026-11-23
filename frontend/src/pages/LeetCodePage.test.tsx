@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { Problem } from '../types'
 import LeetCodePage from './LeetCodePage'
@@ -57,6 +57,9 @@ function mockApi(initial: Problem[], fail?: { method: string; status: number; de
   return fetchMock
 }
 
+// Focus links land on the home URL; render its query so tests can assert where they went.
+const Search = () => <h1>{useLocation().search}</h1>
+
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
@@ -64,7 +67,7 @@ function renderPage() {
       <MemoryRouter initialEntries={['/leetcode']}>
         <Routes>
           <Route path="/leetcode" element={<LeetCodePage />} />
-          <Route path="/leetcode/:problemId" element={<h1>problem page</h1>} />
+          <Route path="/" element={<Search />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -110,9 +113,9 @@ test('renders problems with safe external links, due marks and row navigation', 
   expect(document.querySelector('a[href^="javascript"]')).toBeNull()
 
   fireEvent.click(link)
-  expect(screen.queryByRole('heading', { name: 'problem page' })).toBeNull()
+  expect(screen.queryByRole('heading', { name: /focus=/ })).toBeNull()
   fireEvent.click(screen.getByText('Evil'))
-  expect(screen.getByRole('heading', { name: 'problem page' })).toBeTruthy()
+  expect(screen.getByRole('heading', { name: '?focus=leetcode&problem=3' })).toBeTruthy()
 })
 
 test('shows empty state', async () => {
@@ -234,7 +237,7 @@ test('edit prefills the dialog and PATCHes the problem', async () => {
   expect((within(dialog).getByLabelText('Pattern') as HTMLSelectElement).value).toBe('DP')
   expect((within(dialog).getByLabelText('Minutes') as HTMLInputElement).value).toBe('25')
   expect((within(dialog).getByLabelText('Notes') as HTMLTextAreaElement).value).toBe('use a map')
-  expect(screen.queryByRole('heading', { name: 'problem page' })).toBeNull()
+  expect(screen.queryByRole('heading', { name: /focus=/ })).toBeNull()
 
   fireEvent.change(within(dialog).getByLabelText('Title'), { target: { value: 'Three Sum' } })
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))

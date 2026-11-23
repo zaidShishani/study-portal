@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test'
 
 test('create roadmap, add 3 checkpoints, check one, reorder persists after reload', async ({ page }) => {
   const title = `E2E roadmap ${Date.now()}`
-  await page.goto('/roadmaps')
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Expand Roadmaps' }).click()
   await page.getByRole('button', { name: 'New roadmap' }).click()
   await page.getByRole('dialog').getByLabel('Title').fill(title)
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
@@ -35,5 +36,6 @@ test('create roadmap, add 3 checkpoints, check one, reorder persists after reloa
   await expect(page.getByRole('checkbox', { name: 'Done: First' })).toBeChecked()
 
   await page.goto('/roadmaps')
+  await expect(page).toHaveURL(/\/\?focus=roadmaps$/)
   await expect(page.getByRole('link', { name: new RegExp(title) })).toContainText('1/3 · 33%')
 })

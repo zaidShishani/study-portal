@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { Deck } from '../types'
 import FlashcardsPage from './FlashcardsPage'
@@ -44,6 +44,9 @@ function mockApi(initial: Deck[], fail?: { method: string; status: number; detai
   return fetchMock
 }
 
+// Focus links land on the home URL; render its query so tests can assert where they went.
+const Search = () => <h1>{useLocation().search}</h1>
+
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
@@ -51,7 +54,7 @@ function renderPage() {
       <MemoryRouter initialEntries={['/flashcards']}>
         <Routes>
           <Route path="/flashcards" element={<FlashcardsPage />} />
-          <Route path="/flashcards/:deckId" element={<h1>deck page</h1>} />
+          <Route path="/" element={<Search />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -68,7 +71,7 @@ test('renders decks from the API with counts and links to the deck', async () =>
   expect(screen.getByText('History')).toBeTruthy()
   expect(screen.getAllByText('3 cards · 1 due')).toHaveLength(2)
   fireEvent.click(screen.getByText('Biology'))
-  expect(screen.getByRole('heading', { name: 'deck page' })).toBeTruthy()
+  expect(screen.getByRole('heading', { name: '?focus=flashcards&deck=1' })).toBeTruthy()
 })
 
 test('shows empty state when there are no decks', async () => {

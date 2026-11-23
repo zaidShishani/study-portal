@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { Card, Deck } from '../types'
 import DeckPage from './DeckPage'
@@ -69,15 +69,17 @@ function mockApi(initial: Card[], deckDue = 1) {
   return fetchMock
 }
 
-function renderPage(path = '/flashcards/1') {
+// Focus links land on the home URL; render its query so tests can assert where they went.
+const Search = () => <h1>{useLocation().search}</h1>
+
+function renderPage(deckId = 1) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>
+      <MemoryRouter initialEntries={['/deck']}>
         <Routes>
-          <Route path="/flashcards" element={<h1>flashcards</h1>} />
-          <Route path="/flashcards/:deckId" element={<DeckPage />} />
-          <Route path="/flashcards/:deckId/review" element={<h1>review</h1>} />
+          <Route path="/deck" element={<DeckPage deckId={deckId} />} />
+          <Route path="/" element={<Search />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -97,7 +99,7 @@ test('renders deck title and cards with markdown front, stage and due date', asy
   expect(screen.getByRole('button', { name: 'Edit card: What is ATP?' })).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Delete card: What is ATP?' })).toBeTruthy()
   fireEvent.click(screen.getByRole('link', { name: 'Start review (1 due)' }))
-  expect(screen.getByRole('heading', { name: 'review' })).toBeTruthy()
+  expect(screen.getByRole('heading', { name: '?focus=flashcards&review=1' })).toBeTruthy()
 })
 
 test('review button is disabled when nothing is due', async () => {
@@ -225,8 +227,8 @@ test('double-clicking Un-retire sends one POST', async () => {
 
 test('unknown deck shows not found with a link back', async () => {
   mockApi([])
-  renderPage('/flashcards/999')
+  renderPage(999)
   expect(await screen.findByRole('heading', { name: 'Deck not found' })).toBeTruthy()
   fireEvent.click(screen.getByRole('link', { name: 'Back to flashcards' }))
-  expect(screen.getByRole('heading', { name: 'flashcards' })).toBeTruthy()
+  expect(screen.getByRole('heading', { name: '?focus=flashcards' })).toBeTruthy()
 })

@@ -17,6 +17,7 @@ import {
   useUpdateEvent,
   type Range,
 } from '../hooks/useCalendar'
+import { focusUrl } from '../hooks/useFocus'
 import type { EventInput } from '../types'
 
 const ymd = (d: Date | string) => dayjs(d).format('YYYY-MM-DD')
@@ -65,21 +66,21 @@ export default function CalendarPage() {
           start: c.date,
           allDay: true,
           ...colors.cards,
-          extendedProps: { to: '/flashcards/review' },
+          extendedProps: { to: focusUrl({ focus: 'flashcards', review: 'all' }) },
         })),
         ...data.problems_due.map((p) => ({
           title: p.title,
           start: p.date,
           allDay: true,
           ...colors.problem,
-          extendedProps: { to: `/leetcode/${p.id}` },
+          extendedProps: { to: focusUrl({ focus: 'leetcode', problem: p.id }) },
         })),
         ...data.checkpoints.map((c) => ({
           title: c.title,
           start: c.date,
           allDay: true,
           ...colors.checkpoint,
-          extendedProps: { to: `/roadmaps/${c.roadmap_id}` },
+          extendedProps: { to: focusUrl({ focus: 'roadmaps', roadmap: c.roadmap_id }) },
         })),
       ]
     : []

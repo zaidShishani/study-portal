@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { Card } from '../types'
 import ReviewPage from './ReviewPage'
@@ -35,16 +35,17 @@ function mockApi(queue: Card[], conflictId?: number) {
   return fetchMock
 }
 
-function renderPage(path = '/flashcards/1/review') {
+// Focus links land on the home URL; render its query so tests can assert where they went.
+const Search = () => <h1>{useLocation().search}</h1>
+
+function renderPage(deckId: number | 'all' = 1) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>
+      <MemoryRouter initialEntries={['/review']}>
         <Routes>
-          <Route path="/flashcards" element={<h1>flashcards</h1>} />
-          <Route path="/flashcards/review" element={<ReviewPage />} />
-          <Route path="/flashcards/:deckId" element={<h1>deck page</h1>} />
-          <Route path="/flashcards/:deckId/review" element={<ReviewPage />} />
+          <Route path="/review" element={<ReviewPage deckId={deckId === 'all' ? undefined : deckId} />} />
+          <Route path="/" element={<Search />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -81,7 +82,7 @@ test('flip then answer calls the API and advances', async () => {
   expect(fetchMock.mock.calls.filter(([, init]) => !init?.method)).toHaveLength(1)
 
   fireEvent.click(screen.getByRole('link', { name: 'Back to deck' }))
-  expect(screen.getByRole('heading', { name: 'deck page' })).toBeTruthy()
+  expect(screen.getByRole('heading', { name: '?focus=flashcards&deck=1' })).toBeTruthy()
 })
 
 test('keyboard: Space flips, 1 = Wrong, 2 = Right, ignored before flip and double presses', async () => {
@@ -136,9 +137,9 @@ test('a 409 (already reviewed elsewhere) shows the error and advances', async ()
 
 test('empty queue shows "Nothing due" with a link back', async () => {
   const fetchMock = mockApi([])
-  renderPage('/flashcards/review')
+  renderPage('all')
   expect(await screen.findByRole('heading', { name: 'Nothing due' })).toBeTruthy()
   expect(fetchMock.mock.calls[0][0]).toBe('/api/review/cards')
   fireEvent.click(screen.getByRole('link', { name: 'Back to flashcards' }))
-  await waitFor(() => expect(screen.getByRole('heading', { name: 'flashcards' })).toBeTruthy())
+  await waitFor(() => expect(screen.getByRole('heading', { name: '?focus=flashcards' })).toBeTruthy())
 })

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -20,13 +20,13 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import MarkdownView from '../components/MarkdownView'
 import { useCards, useCreateCard, useDeleteCard, useUnretireCard, useUpdateCard } from '../hooks/useCards'
 import { useDeck } from '../hooks/useDecks'
+import { focusUrl } from '../hooks/useFocus'
 import type { Card, CardStatus } from '../types'
 
 // Crude markdown strip for button labels, so screen readers can tell cards apart.
 const excerpt = (md: string) => md.replace(/[#*_`>~[\]()!|-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40)
 
-export default function DeckPage() {
-  const deckId = Number(useParams().deckId)
+export default function DeckPage({ deckId }: { deckId: number }) {
   const [status, setStatus] = useState<CardStatus>('active')
   const deck = useDeck(deckId)
   const cards = useCards(deckId, status)
@@ -45,14 +45,13 @@ export default function DeckPage() {
   const loadError = deck.error ?? cards.error
   const snackbar = message || (loadError && loadError !== dismissedError ? loadError.message : '')
 
-  // 422 = a non-numeric id in the URL; treat it like an unknown deck.
-  if (deck.error instanceof ApiError && (deck.error.status === 404 || deck.error.status === 422)) {
+  if (deck.error instanceof ApiError && deck.error.status === 404) {
     return (
       <>
         <Typography variant="h4" component="h1" gutterBottom>
           Deck not found
         </Typography>
-        <Button component={Link} to="/flashcards">
+        <Button component={Link} to={focusUrl({ focus: 'flashcards' })}>
           Back to flashcards
         </Button>
       </>
@@ -85,7 +84,7 @@ export default function DeckPage() {
           {deck.data?.title}
         </Typography>
         <Stack direction="row" spacing={1}>
-          <Button variant="outlined" component={Link} to={`/flashcards/${deckId}/review`} disabled={due === 0}>
+          <Button variant="outlined" component={Link} to={focusUrl({ focus: 'flashcards', review: deckId })} disabled={due === 0}>
             Start review ({due} due)
           </Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing({})}>

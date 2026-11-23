@@ -19,6 +19,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import DeckDialog from '../components/DeckDialog'
 import RoadmapProgress from '../components/RoadmapProgress'
 import { useCreateRoadmap, useDeleteRoadmap, useRenameRoadmap, useRoadmaps } from '../hooks/useRoadmaps'
+import { focusUrl } from '../hooks/useFocus'
 import type { Roadmap } from '../types'
 
 export default function RoadmapsPage() {
@@ -71,7 +72,7 @@ export default function RoadmapsPage() {
       <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
         {roadmaps.data?.map((roadmap) => (
           <Card key={roadmap.id} variant="outlined">
-            <CardActionArea component={Link} to={`/roadmaps/${roadmap.id}`}>
+            <CardActionArea component={Link} to={focusUrl({ focus: 'roadmaps', roadmap: roadmap.id })}>
               <CardContent>
                 <Typography variant="h6" component="h2" noWrap title={roadmap.title} gutterBottom>
                   {roadmap.title}
