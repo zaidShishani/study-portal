@@ -13,6 +13,7 @@ export default function ListRow({ children, to, onClick }: Props) {
       to={to}
       onClick={onClick}
       sx={{
+        position: 'relative', // anchors stretched row links (see HomePage)
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'flex-start',

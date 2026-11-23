@@ -6,7 +6,7 @@ async function post<T>(request: APIRequestContext, url: string, data: object): P
   return res.json()
 }
 
-test('seeded card, problem and roadmap show on the home cards; Start review opens the review', async ({ page }) => {
+test('seeded card, problem and roadmap show on the home cards; Review all opens the review', async ({ page }) => {
   const tag = Date.now()
   const { request } = page
   const deck = await post<{ id: number }>(request, '/api/decks', { title: `E2E dash deck ${tag}` })
@@ -21,10 +21,8 @@ test('seeded card, problem and roadmap show on the home cards; Start review open
 
   await page.goto('/')
   const main = page.getByRole('main')
-  await expect(main.getByRole('link', { name: new RegExp(`E2E dash deck ${tag}`) })).toHaveAttribute(
-    'href',
-    `/?focus=flashcards&review=${deck.id}`,
-  )
+  await expect(main.getByRole('link', { name: `E2E dash deck ${tag}`, exact: true })).toHaveAttribute('href', `/?focus=flashcards&deck=${deck.id}`)
+  await expect(main.getByRole('link', { name: `Review E2E dash deck ${tag}` })).toHaveAttribute('href', `/?focus=flashcards&review=${deck.id}`)
   // The calendar agenda lists today's due problem too; check the LeetCode panel's link.
   const leetcode = main.getByRole('region', { name: 'LeetCode' })
   await expect(leetcode.getByRole('link', { name: new RegExp(`E2E dash problem ${tag}`) })).toHaveAttribute(
@@ -37,7 +35,7 @@ test('seeded card, problem and roadmap show on the home cards; Start review open
   await expect(roadmaps.getByRole('link', { name: /Only step/ })).toHaveAttribute('href', `/?focus=roadmaps&roadmap=${roadmap.id}`)
   await expect(roadmaps.getByText('0 / 1')).toBeVisible()
 
-  await main.getByRole('link', { name: 'Start review' }).click()
+  await main.getByRole('link', { name: 'Review all' }).click()
   await expect(page).toHaveURL(/\/\?focus=flashcards&review=all$/)
   await expect(page.getByText(/^1 of \d+$/)).toBeVisible()
 })
