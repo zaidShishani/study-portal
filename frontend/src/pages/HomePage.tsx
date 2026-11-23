@@ -16,6 +16,8 @@ import RoadmapsPage from './RoadmapsPage'
 
 const TITLES: Record<PanelName, string> = { flashcards: 'Flashcards', leetcode: 'LeetCode', roadmaps: 'Roadmaps' }
 const wrap = { minWidth: 0, overflowWrap: 'anywhere' }
+// Rows per home panel; the rest are one click away in the focus view.
+const MAX_ROWS = 5
 
 function Empty({ children }: { children: ReactNode }) {
   return <Typography color="text.secondary">{children}</Typography>
@@ -30,18 +32,36 @@ export default function HomePage() {
   const lastFocus = useRef(focus)
   const lastSearch = useRef(search)
 
-  // a11y: entering a view focuses its h1 (or the view box while it loads); leaving focuses the panel heading.
-  // Not the back arrow: Space on a focused button would leave the review instead of flipping the card.
+  // a11y: entering a view focuses its h1; leaving focuses the panel heading. Views whose h1 waits for data
+  // (problem, review) hold focus on the view box until it appears. Not the back arrow: Space on a focused
+  // button would leave the review instead of flipping the card.
   useEffect(() => {
     // Only on navigation, not on first load or refresh.
     if (lastSearch.current === search) return
     lastSearch.current = search
-    if (focus) {
-      const h1 = focusBox.current?.querySelector('h1')
-      if (h1) h1.tabIndex = -1
-      ;(h1 ?? focusBox.current)?.focus()
-    } else if (lastFocus.current) document.getElementById(`panel-${lastFocus.current}`)?.focus()
+    const prev = lastFocus.current
     lastFocus.current = focus
+    const box = focusBox.current
+    if (!focus || !box) {
+      if (prev) document.getElementById(`panel-${prev}`)?.focus()
+      return
+    }
+    const focusH1 = () => {
+      const h1 = box.querySelector('h1')
+      if (h1) {
+        h1.tabIndex = -1
+        h1.focus()
+      }
+      return h1
+    }
+    if (focusH1()) return
+    box.focus()
+    const observer = new MutationObserver(() => {
+      // Give up if the user moved focus meanwhile.
+      if (document.activeElement !== box || focusH1()) observer.disconnect()
+    })
+    observer.observe(box, { childList: true, subtree: true })
+    return () => observer.disconnect()
   }, [focus, search])
 
   useEffect(() => {
@@ -80,6 +100,12 @@ export default function HomePage() {
   }
 
   const expand = (name: PanelName) => () => navigate(focusUrl({ focus: name }))
+  const showAll = (name: PanelName, total: number) =>
+    total > MAX_ROWS && (
+      <Button size="small" onClick={expand(name)} sx={{ display: 'flex', ml: -1, mb: 1 }}>
+        Show all ({total})
+      </Button>
+    )
   const loading = isPending && <CircularProgress aria-label="Loading" size={24} />
   const due = data?.due_card_total ?? 0
 
@@ -116,13 +142,14 @@ export default function HomePage() {
                 {due ? `${due} ${due === 1 ? 'card' : 'cards'} due` : 'No cards due.'}
               </Typography>
               <List dense sx={{ mx: -2 }}>
-                {data.decks.map((d) => (
+                {data.decks.slice(0, MAX_ROWS).map((d) => (
                   <ListItemButton key={d.id} component={Link} to={focusUrl({ focus: 'flashcards', review: d.id })}>
                     <ListItemText sx={wrap} primary={d.title} />
                     <Chip size="small" label={d.due_count} />
                   </ListItemButton>
                 ))}
               </List>
+              {showAll('flashcards', data.decks.length)}
               <Button
                 variant="contained"
                 component={Link}
@@ -144,7 +171,7 @@ export default function HomePage() {
           {data?.problems_due.length === 0 && <Empty>No problems due.</Empty>}
           {data && (
             <List dense sx={{ mx: -2 }}>
-              {data.problems_due.map((p) => (
+              {data.problems_due.slice(0, MAX_ROWS).map((p) => (
                 <ListItemButton key={p.id} component={Link} to={focusUrl({ focus: 'leetcode', problem: p.id })}>
                   <ListItemText sx={wrap} primary={p.title} />
                   <Stack direction="row" spacing={1}>
@@ -155,6 +182,7 @@ export default function HomePage() {
               ))}
             </List>
           )}
+          {data && showAll('leetcode', data.problems_due.length)}
         </Panel>
 
         <Panel title="Notes">
@@ -166,7 +194,7 @@ export default function HomePage() {
           {data?.roadmaps.length === 0 && <Empty>No roadmaps yet.</Empty>}
           {data && (
             <List dense sx={{ mx: -2 }}>
-              {data.roadmaps.map((r) => (
+              {data.roadmaps.slice(0, MAX_ROWS).map((r) => (
                 <ListItemButton
                   key={r.id}
                   component={Link}
@@ -185,6 +213,7 @@ export default function HomePage() {
               ))}
             </List>
           )}
+          {data && showAll('roadmaps', data.roadmaps.length)}
         </Panel>
       </Box>
     </Stack>
