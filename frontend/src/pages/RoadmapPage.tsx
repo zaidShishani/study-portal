@@ -138,7 +138,7 @@ export default function RoadmapPage() {
                 flexWrap: 'wrap',
                 gap: 1,
                 alignItems: 'flex-start',
-                borderColor: overdue ? 'error.main' : undefined,
+                borderColor: overdue ? 'secondary.main' : undefined,
               }}
             >
               <Checkbox

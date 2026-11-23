@@ -2,6 +2,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { ReactNode } from 'react'
 import { Box, Typography, type TypographyProps } from '@mui/material'
+import { fonts } from '../theme/tokens'
 
 type MdNode = { type: string; value?: string; children?: MdNode[] }
 
@@ -43,8 +44,8 @@ export default function MarkdownView({ children }: { children: string }) {
     <Box
       sx={{
         '& pre': { bgcolor: 'action.hover', p: 1.5, borderRadius: 1, overflowX: 'auto' },
-        '& code': { fontFamily: 'monospace', fontSize: '0.875em' },
-        '& :not(pre) > code': { bgcolor: 'action.hover', px: 0.5, borderRadius: 0.5 },
+        '& code': { fontFamily: fonts.mono, fontSize: '0.875em' },
+        '& :not(pre) > code': { bgcolor: 'action.hover', px: 0.5, borderRadius: 1 },
         '& table': { borderCollapse: 'collapse' },
         '& th, & td': { border: 1, borderColor: 'divider', px: 1, py: 0.5 },
         '& img': { maxWidth: '100%' },

@@ -39,7 +39,7 @@ export default function NotificationBell() {
         aria-expanded={anchor ? 'true' : undefined}
         onClick={(e) => setAnchor(e.currentTarget)}
       >
-        <Badge badgeContent={count} color="error" invisible={data.length === 0}>
+        <Badge badgeContent={count} color="secondary" invisible={data.length === 0}>
           <NotificationsIcon />
         </Badge>
       </IconButton>
