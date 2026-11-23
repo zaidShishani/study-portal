@@ -12,7 +12,6 @@ export type Tokens = {
   onPrimary: string
   accent: string
   accentSoft: string
-  hoverShadow: string
   green: Pastel
   yellow: Pastel
   red: Pastel
@@ -40,7 +39,6 @@ export const tokens: { light: Tokens; dark: Tokens } = {
     onPrimary: '#FFFFFF',
     accent: '#D97706',
     accentSoft: '#FBF3DB',
-    hoverShadow: '0 2px 8px rgba(0,0,0,0.04)',
     green: { bg: '#EDF3EC', text: '#346538' },
     yellow: { bg: '#FBF3DB', text: '#956400' },
     red: { bg: '#FDEBEC', text: '#9F2F2D' },
@@ -57,7 +55,6 @@ export const tokens: { light: Tokens; dark: Tokens } = {
     onPrimary: '#191919',
     accent: '#FBBF24',
     accentSoft: 'rgba(251,191,36,0.12)',
-    hoverShadow: 'none',
     green: { bg: 'rgba(76,175,80,0.12)', text: '#8CC793' },
     yellow: { bg: 'rgba(251,191,36,0.12)', text: '#F0C35B' },
     red: { bg: 'rgba(239,68,68,0.12)', text: '#F2948F' },
