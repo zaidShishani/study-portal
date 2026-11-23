@@ -18,18 +18,13 @@ log = logging.getLogger(__name__)
 MAX_ITEMS = 1000  # per derived list, like rrule.MAX_OCCURRENCES for events
 
 
-def calendar(db: Session, user: User, first: date, last: date) -> dict[str, Any]:
-    """Everything on the user's calendar for the inclusive local dates [first, last].
+def events_between(
+    db: Session, user: User, start: datetime, end: datetime, tz: ZoneInfo
+) -> tuple[list[dict[str, Any]], bool, list[int]]:
+    """Occurrences overlapping [start, end) sorted by start, capped at MAX_OCCURRENCES.
 
-    Raises ValueError if the window is not within 10 years of now.
+    Returns (events, truncated, invalid_event_ids); events whose stored rule fails validation are skipped.
     """
-    tz = ZoneInfo(user.timezone)
-    start = datetime.combine(first, time(), tz)
-    end = datetime.combine(last + timedelta(days=1), time(), tz)
-    # Window errors raise here, so the per-event handler below only sees bad stored events.
-    rrule.check_near_now(start)
-    rrule.check_near_now(end)
-
     events: list[dict[str, Any]] = []
     invalid_event_ids: list[int] = []
     truncated = False
@@ -67,6 +62,22 @@ def calendar(db: Session, user: User, first: date, last: date) -> dict[str, Any]
     events.sort(key=lambda e: (e["start"], e["event_id"]))
     if len(events) > rrule.MAX_OCCURRENCES:  # bound the whole response, not just each event
         events, truncated = events[: rrule.MAX_OCCURRENCES], True
+    return events, truncated, invalid_event_ids
+
+
+def calendar(db: Session, user: User, first: date, last: date) -> dict[str, Any]:
+    """Everything on the user's calendar for the inclusive local dates [first, last].
+
+    Raises ValueError if the window is not within 10 years of now.
+    """
+    tz = ZoneInfo(user.timezone)
+    start = datetime.combine(first, time(), tz)
+    end = datetime.combine(last + timedelta(days=1), time(), tz)
+    # Window errors raise here, so the per-event handler below only sees bad stored events.
+    rrule.check_near_now(start)
+    rrule.check_near_now(end)
+
+    events, truncated, invalid_event_ids = events_between(db, user, start, end, tz)
 
     # Overdue items are due today: fold them onto today (dropped when today is outside the window).
     today = literal(today_for(user))
