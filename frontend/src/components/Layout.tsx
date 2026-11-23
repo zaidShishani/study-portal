@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   AppBar,
   Box,
@@ -16,6 +16,7 @@ import {
 import { useTheme } from '@mui/material/styles'
 import MenuIcon from '@mui/icons-material/Menu'
 import NotificationBell from './NotificationBell'
+import { WIDE_QUERY } from '../hooks/useExpandFlip'
 
 const NAV = [
   { to: '/', label: 'Home' },
@@ -31,11 +32,13 @@ export default function Layout() {
   const isWide = useMediaQuery(theme.breakpoints.up('sm'), { noSsr: true, defaultMatches: true })
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null)
   const closeMenu = () => setMenuAnchor(null)
+  const home = useLocation().pathname === '/'
 
   return (
-    <>
+    // Home (`/`) is the one-screen grid: on wide screens main fills exactly what the top bar leaves.
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh', [`@media ${WIDE_QUERY}`]: home ? { height: '100dvh' } : {} }}>
       <AppBar position="sticky">
-        <Toolbar sx={{ width: '100%', maxWidth: 1200, mx: 'auto', gap: 1, px: { xs: 3, md: 4 } }}>
+        <Toolbar sx={{ width: '100%', gap: 1, px: { xs: 3, md: 4 } }}>
           <Typography
             component={Link}
             to="/"
@@ -116,9 +119,9 @@ export default function Layout() {
           <NotificationBell />
         </Toolbar>
       </AppBar>
-      <Box component="main" sx={{ maxWidth: 1200, mx: 'auto', px: { xs: 3, md: 4 }, py: { xs: 3, md: 4 } }}>
+      <Box component="main" sx={home ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : { width: '100%', maxWidth: 1200, mx: 'auto', px: { xs: 3, md: 4 }, py: { xs: 3, md: 4 } }}>
         <Outlet />
       </Box>
-    </>
+    </Box>
   )
 }

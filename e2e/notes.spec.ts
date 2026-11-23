@@ -92,7 +92,7 @@ test('home notes card: recent pages, edits move a page to the top, New page open
   await page.getByLabel('Content').fill('edited')
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('All changes saved')).toBeVisible()
-  await page.getByRole('button', { name: 'Back to home' }).click()
+  await page.getByRole('button', { name: 'Collapse Notes' }).click()
   await expect(links.first()).toHaveText(new RegExp(`E2E recent A ${stamp}`))
 
   await card.getByRole('button', { name: 'New page' }).click()

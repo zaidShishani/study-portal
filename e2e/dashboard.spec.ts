@@ -6,7 +6,7 @@ async function post<T>(request: APIRequestContext, url: string, data: object): P
   return res.json()
 }
 
-test('seeded card, problem and roadmap show on the home panels; Start review opens the review', async ({ page }) => {
+test('seeded card, problem and roadmap show on the home cards; Start review opens the review', async ({ page }) => {
   const tag = Date.now()
   const { request } = page
   const deck = await post<{ id: number }>(request, '/api/decks', { title: `E2E dash deck ${tag}` })
@@ -31,9 +31,11 @@ test('seeded card, problem and roadmap show on the home panels; Start review ope
     'href',
     `/?focus=leetcode&problem=${problem.id}`,
   )
-  const roadmapLink = main.getByRole('link', { name: new RegExp(`E2E dash roadmap ${tag}`) })
-  await expect(roadmapLink).toHaveAttribute('href', `/?focus=roadmaps&roadmap=${roadmap.id}`)
-  await expect(roadmapLink).toContainText('0/1 · 0%')
+  // Roadmaps card: pick the roadmap's tab, then its checkpoints and progress show.
+  const roadmaps = main.getByRole('region', { name: 'Roadmaps' })
+  await roadmaps.getByRole('button', { name: `E2E dash roadmap ${tag}` }).click()
+  await expect(roadmaps.getByRole('link', { name: /Only step/ })).toHaveAttribute('href', `/?focus=roadmaps&roadmap=${roadmap.id}`)
+  await expect(roadmaps.getByText('0 / 1')).toBeVisible()
 
   await main.getByRole('link', { name: 'Start review' }).click()
   await expect(page).toHaveURL(/\/\?focus=flashcards&review=all$/)

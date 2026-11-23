@@ -13,7 +13,7 @@ test('top bar navigates to Settings and Home', async ({ page, baseURL }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Settings')
   await nav.getByRole('link', { name: 'Home' }).click()
   await expect(page).toHaveURL(new URL('/', baseURL).href)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Today')
+  await expect(page.getByRole('region', { name: 'Flashcards' })).toBeVisible()
 })
 
 test('old section URLs redirect to focus views; including notes and calendar', async ({ page, baseURL }) => {
