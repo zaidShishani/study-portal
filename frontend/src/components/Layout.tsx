@@ -21,6 +21,7 @@ import MenuIcon from '@mui/icons-material/Menu'
 import NotesIcon from '@mui/icons-material/Notes'
 import StyleIcon from '@mui/icons-material/Style'
 import TodayIcon from '@mui/icons-material/Today'
+import NotificationBell from './NotificationBell'
 
 const DRAWER_WIDTH = 220
 
@@ -60,7 +61,7 @@ export default function Layout() {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             Study Portal
           </Typography>
-          {/* Notification bell goes here. */}
+          <NotificationBell />
         </Toolbar>
       </AppBar>
       <Drawer
