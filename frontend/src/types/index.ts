@@ -132,6 +132,15 @@ export type Problem = ProblemInput & {
   updated_at: string
 }
 
+// Not `Notification`: that name is the DOM Notification global.
+export type AppNotification = {
+  id: number
+  event_id: number
+  title: string
+  occurrence_start: string
+  fire_at: string
+}
+
 // Fields the client may send on event create/update; times are ISO strings with an offset.
 export type EventInput = {
   title: string
