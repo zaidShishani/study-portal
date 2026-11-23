@@ -119,7 +119,8 @@ export default function Layout() {
           <NotificationBell />
         </Toolbar>
       </AppBar>
-      <Box component="main" sx={home ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : { width: '100%', maxWidth: 1200, mx: 'auto', px: { xs: 3, md: 4 }, py: { xs: 3, md: 4 } }}>
+      {/* Other pages start at the top bar's 32px gutter; 1024 - 2 × 32 = 960px of content for readability. */}
+      <Box component="main" sx={home ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : { width: '100%', maxWidth: 1024, px: { xs: 3, md: 4 }, py: { xs: 3, md: 4 } }}>
         <Outlet />
       </Box>
     </Box>
