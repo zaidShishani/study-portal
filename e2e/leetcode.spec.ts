@@ -13,7 +13,8 @@ async function logAttempt(page: Page, result: string) {
 
 test('create a problem, log failed then solved, and the ladder advances', async ({ page }) => {
   const title = `E2E problem ${Date.now()}`
-  await page.goto('/leetcode')
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Expand LeetCode' }).click()
   await page.getByRole('button', { name: 'New problem' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Title').fill(title)

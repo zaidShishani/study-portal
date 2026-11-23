@@ -4,13 +4,14 @@ import { expect, test } from '@playwright/test'
 // four different days and the API has no time-travel or fixture hook; add one if e2e coverage is needed.
 test('create deck, add card, review Right, card leaves the queue', async ({ page }) => {
   const title = `E2E deck ${Date.now()}`
-  await page.goto('/flashcards')
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Expand Flashcards' }).click()
   await page.getByRole('button', { name: 'New deck' }).click()
   await page.getByRole('dialog').getByLabel('Title').fill(title)
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
   await page.getByText(title).click()
   await expect(page.getByRole('heading', { name: title })).toBeVisible()
-  const deckId = page.url().split('/').pop()
+  const deckId = new URL(page.url()).searchParams.get('deck')
 
   await page.getByRole('button', { name: 'New card' }).click()
   const dialog = page.getByRole('dialog')

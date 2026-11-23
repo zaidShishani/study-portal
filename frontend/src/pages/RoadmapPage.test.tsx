@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { Checkpoint } from '../types'
 import RoadmapPage from './RoadmapPage'
@@ -58,14 +58,12 @@ function mockApi(initial: Checkpoint[], hold?: Promise<void>) {
   return fetchMock
 }
 
-function renderPage(path = '/roadmaps/1') {
+function renderPage(roadmapId = 1) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route path="/roadmaps/:roadmapId" element={<RoadmapPage />} />
-        </Routes>
+      <MemoryRouter>
+        <RoadmapPage roadmapId={roadmapId} />
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -176,7 +174,7 @@ test('a full roadmap (409) shows the error and keeps the dialog open', async () 
 
 test('shows not-found for an unknown roadmap', async () => {
   mockApi([])
-  renderPage('/roadmaps/42')
+  renderPage(42)
   expect(await screen.findByRole('heading', { name: 'Roadmap not found' })).toBeTruthy()
-  expect(screen.getByRole('link', { name: 'Back to roadmaps' }).getAttribute('href')).toBe('/roadmaps')
+  expect(screen.getByRole('link', { name: 'Back to roadmaps' }).getAttribute('href')).toBe('/?focus=roadmaps')
 })

@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Button, Divider, Paper, Snackbar, Stack, Typography } from '@mui/material'
 import { ApiError } from '../api/client'
 import MarkdownView from '../components/MarkdownView'
 import { useReviewCard, useReviewQueue } from '../hooks/useCards'
+import { focusUrl } from '../hooks/useFocus'
 
-export default function ReviewPage() {
-  const param = useParams().deckId
-  const deckId = param === undefined ? undefined : Number(param)
-  const backTo = deckId === undefined ? '/flashcards' : `/flashcards/${deckId}`
+/** deckId undefined = review every deck. */
+export default function ReviewPage({ deckId }: { deckId?: number }) {
+  const backTo = focusUrl(deckId === undefined ? { focus: 'flashcards' } : { focus: 'flashcards', deck: deckId })
   const queue = useReviewQueue(deckId)
   const review = useReviewCard()
   const [index, setIndex] = useState(0)

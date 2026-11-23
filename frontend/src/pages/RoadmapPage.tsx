@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Box, Button, Checkbox, IconButton, Paper, Snackbar, Stack, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward'
@@ -11,6 +11,7 @@ import { ApiError } from '../api/client'
 import CheckpointDialog from '../components/CheckpointDialog'
 import ConfirmDialog from '../components/ConfirmDialog'
 import RoadmapProgress from '../components/RoadmapProgress'
+import { focusUrl } from '../hooks/useFocus'
 import {
   useCreateCheckpoint,
   useDeleteCheckpoint,
@@ -20,8 +21,7 @@ import {
 } from '../hooks/useRoadmaps'
 import type { Checkpoint, CheckpointInput } from '../types'
 
-export default function RoadmapPage() {
-  const roadmapId = Number(useParams().roadmapId)
+export default function RoadmapPage({ roadmapId }: { roadmapId: number }) {
   const roadmap = useRoadmap(roadmapId)
   const createCheckpoint = useCreateCheckpoint()
   const updateCheckpoint = useUpdateCheckpoint()
@@ -42,14 +42,13 @@ export default function RoadmapPage() {
   // YYYY-MM-DD strings compare correctly as text.
   const today = dayjs().format('YYYY-MM-DD')
 
-  // 422 = a non-numeric id in the URL; treat it like an unknown roadmap.
-  if (roadmap.error instanceof ApiError && (roadmap.error.status === 404 || roadmap.error.status === 422)) {
+  if (roadmap.error instanceof ApiError && roadmap.error.status === 404) {
     return (
       <>
         <Typography variant="h4" component="h1" gutterBottom>
           Roadmap not found
         </Typography>
-        <Button component={Link} to="/roadmaps">
+        <Button component={Link} to={focusUrl({ focus: 'roadmaps' })}>
           Back to roadmaps
         </Button>
       </>

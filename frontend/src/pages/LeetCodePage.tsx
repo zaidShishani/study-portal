@@ -23,6 +23,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ProblemDialog from '../components/ProblemDialog'
+import { focusUrl } from '../hooks/useFocus'
 import { isHttpUrl, type ProblemFilters } from '../api/problems'
 import { useCreateProblem, useDeleteProblem, useProblems, useUpdateProblem } from '../hooks/useProblems'
 import { DIFFICULTIES, DIFFICULTY_COLOR, PATTERNS, type Difficulty, type Pattern, type Problem, type ProblemInput, type ProblemStatus } from '../types'
@@ -147,7 +148,7 @@ export default function LeetCodePage() {
             <TableBody>
               {problems.data?.map((p) => {
                 const due = !p.retired_at && !!p.due_date && p.due_date <= today
-                const open = () => navigate(`/leetcode/${p.id}`)
+                const open = () => navigate(focusUrl({ focus: 'leetcode', problem: p.id }))
                 return (
                   <TableRow
                     key={p.id}

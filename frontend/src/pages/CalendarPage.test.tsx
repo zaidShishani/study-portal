@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, expect, test, vi } from 'vitest'
 import dayjs from 'dayjs'
 import type { CalendarData } from '../types'
@@ -36,6 +36,9 @@ function mockApi(data: Partial<CalendarData>) {
   return fetchMock
 }
 
+// Focus links land on the home URL; render its query so tests can assert where they went.
+const Search = () => <h1>{useLocation().search}</h1>
+
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
@@ -43,9 +46,7 @@ function renderPage() {
       <MemoryRouter initialEntries={['/calendar']}>
         <Routes>
           <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/flashcards/review" element={<p>Review page</p>} />
-          <Route path="/leetcode/:id" element={<p>Problem page</p>} />
-          <Route path="/roadmaps/:id" element={<p>Roadmap page</p>} />
+          <Route path="/" element={<Search />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -74,7 +75,7 @@ test('fetches the visible month and renders events and derived items', async () 
   expect(dayjs(to).diff(from, 'day')).toBe(41)
 
   fireEvent.click(screen.getByText('Two Sum'))
-  expect(await screen.findByText('Problem page')).toBeTruthy()
+  expect(await screen.findByRole('heading', { name: '?focus=leetcode&problem=3' })).toBeTruthy()
 })
 
 test('derived items link to their pages', async () => {
@@ -84,7 +85,7 @@ test('derived items link to their pages', async () => {
   })
   renderPage()
   fireEvent.click(await screen.findByText('2 cards due'))
-  expect(await screen.findByText('Review page')).toBeTruthy()
+  expect(await screen.findByRole('heading', { name: '?focus=flashcards&review=all' })).toBeTruthy()
 })
 
 test('clicking an event opens the edit dialog with the fetched event', async () => {

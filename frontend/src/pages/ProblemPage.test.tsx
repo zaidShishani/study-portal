@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { Problem } from '../types'
 import ProblemPage from './ProblemPage'
@@ -48,14 +48,17 @@ function mockApi(initial: Problem | null, hold?: Promise<void>) {
   return fetchMock
 }
 
-function renderPage(path = '/leetcode/7') {
+// Focus links land on the home URL; render its query so tests can assert where they went.
+const Search = () => <h1>{useLocation().search}</h1>
+
+function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[path]}>
+      <MemoryRouter initialEntries={['/problem']}>
         <Routes>
-          <Route path="/leetcode" element={<h1>problem list</h1>} />
-          <Route path="/leetcode/:problemId" element={<ProblemPage />} />
+          <Route path="/problem" element={<ProblemPage problemId={7} />} />
+          <Route path="/" element={<Search />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -188,7 +191,7 @@ test('delete asks for confirmation then returns to the list', async () => {
   renderPage()
   fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Delete' }))
-  expect(await screen.findByRole('heading', { name: 'problem list' })).toBeTruthy()
+  expect(await screen.findByRole('heading', { name: '?focus=leetcode' })).toBeTruthy()
   expect(fetchMock.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(true)
   // The deleted detail is not refetched.
   expect(fetchMock.mock.calls.filter(([, init]) => !init?.method)).toHaveLength(1)

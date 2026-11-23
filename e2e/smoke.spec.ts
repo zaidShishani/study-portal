@@ -16,15 +16,20 @@ test('top bar navigates to Settings and Home', async ({ page, baseURL }) => {
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Today')
 })
 
-test('section routes still work by URL', async ({ page }) => {
-  for (const [path, title] of [
-    ['/flashcards', 'Flashcards'],
-    ['/leetcode', 'LeetCode'],
-    ['/notes', 'Notes'],
-    ['/roadmaps', 'Roadmaps'],
-    ['/calendar', 'Calendar'],
-  ]) {
+test('old section URLs redirect to focus views; notes and calendar still work by URL', async ({ page, baseURL }) => {
+  for (const [path, url, title] of [
+    ['/flashcards', '/?focus=flashcards', 'Flashcards'],
+    ['/leetcode', '/?focus=leetcode', 'LeetCode'],
+    ['/roadmaps', '/?focus=roadmaps', 'Roadmaps'],
+    ['/flashcards/999999', '/?focus=flashcards&deck=999999', 'Deck not found'],
+    ['/flashcards/review', '/?focus=flashcards&review=all', /^(Nothing due|Review)$/],
+    ['/leetcode/999999', '/?focus=leetcode&problem=999999', 'Problem not found'],
+    ['/roadmaps/999999', '/?focus=roadmaps&roadmap=999999', 'Roadmap not found'],
+    ['/notes', '/notes', 'Notes'],
+    ['/calendar', '/calendar', 'Calendar'],
+  ] as [string, string, string | RegExp][]) {
     await page.goto(path)
+    await expect(page).toHaveURL(new URL(url, baseURL).href)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(title)
   }
 })

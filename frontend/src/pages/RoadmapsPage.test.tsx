@@ -57,7 +57,7 @@ test('lists roadmaps with done/total progress', async () => {
   expect(screen.getByText('1/3 · 33%')).toBeTruthy()
   expect(screen.getByRole('progressbar', { name: 'Progress 1/3 · 33%' }).getAttribute('aria-valuenow')).toBe('33')
   expect(screen.getByText('0/0 · 0%')).toBeTruthy()
-  expect(screen.getByRole('link', { name: /Backend/ }).getAttribute('href')).toBe('/roadmaps/1')
+  expect(screen.getByRole('link', { name: /Backend/ }).getAttribute('href')).toBe('/?focus=roadmaps&roadmap=1')
 })
 
 test('shows empty state when there are no roadmaps', async () => {

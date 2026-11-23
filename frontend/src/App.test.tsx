@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import App from './App.tsx'
 import { ThemeModeProvider } from './theme/ThemeModeProvider.tsx'
@@ -16,12 +16,18 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+function Url() {
+  const { pathname, search } = useLocation()
+  return <output aria-label="url">{pathname + search}</output>
+}
+
 function renderApp(path = '/') {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <ThemeModeProvider>
         <MemoryRouter initialEntries={[path]}>
           <App />
+          <Url />
         </MemoryRouter>
       </ThemeModeProvider>
     </QueryClientProvider>,
@@ -56,6 +62,25 @@ test('logout is disabled, focusable through its wrapper, and explains why', asyn
   expect(wrapper.tabIndex).toBe(0)
   fireEvent.mouseOver(wrapper)
   expect((await screen.findByRole('tooltip')).textContent).toBe('Available once login is set up')
+})
+
+test('old section URLs redirect to the home focus view', () => {
+  for (const [from, to] of [
+    ['/flashcards', '/?focus=flashcards'],
+    ['/flashcards/review', '/?focus=flashcards&review=all'],
+    ['/flashcards/3', '/?focus=flashcards&deck=3'],
+    ['/flashcards/3/review', '/?focus=flashcards&review=3'],
+    ['/leetcode', '/?focus=leetcode'],
+    ['/leetcode/7', '/?focus=leetcode&problem=7'],
+    ['/roadmaps', '/?focus=roadmaps'],
+    ['/roadmaps/2', '/?focus=roadmaps&roadmap=2'],
+    // Junk is encoded, then rejected by useFocus.
+    ['/flashcards/a&focus=x', '/?focus=flashcards&deck=a%26focus%3Dx'],
+  ]) {
+    renderApp(from)
+    expect(screen.getByRole('status', { name: 'url' }).textContent).toBe(to)
+    cleanup()
+  }
 })
 
 test('existing section routes still render', () => {
