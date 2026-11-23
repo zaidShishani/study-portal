@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react'
+import { useId, useRef, useState, type FormEvent } from 'react'
 import { Box, Button, Stack, TextField, Typography } from '@mui/material'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCreateCard } from '../hooks/useCards'
@@ -23,6 +23,7 @@ export function QuickAddCard({ decks, onError }: { decks: Deck[]; onError: OnErr
   const [touched, setTouched] = useState(false)
   // isPending lands a render late; the ref blocks a same-tick double click.
   const busy = useRef(false)
+  const deckSelect = useId()
   const deck = decks.find((d) => String(d.id) === deckId) ?? decks[0]
   const errors = { front: textError(front, MAX_CARD), back: textError(back, MAX_CARD) }
 
@@ -50,17 +51,21 @@ export function QuickAddCard({ decks, onError }: { decks: Deck[]; onError: OnErr
   }
 
   return (
-    <Stack component="form" noValidate onSubmit={submit} aria-label="Quick add card" sx={{ gap: 1, px: 2, py: 1.5 }}>
+    <Stack component="form" noValidate onSubmit={submit} aria-label="Quick add card" sx={{ gap: 1, px: 2, py: 1 }}>
       <Typography variant="overline" component="h3" color="text.secondary" sx={{ lineHeight: 1.5 }}>
         Quick add card
+      </Typography>
+      <Typography variant="body2" component="label" htmlFor={deckSelect} color="text.secondary" sx={{ mb: -0.5 }}>
+        Deck
       </Typography>
       <TextField
         select
         size="small"
+        id={deckSelect}
         value={deck ? String(deck.id) : ''}
         onChange={(e) => setDeckId(e.target.value)}
         disabled={!deck}
-        slotProps={{ select: { native: true }, ...label('Deck') }}
+        slotProps={{ select: { native: true } }}
         sx={dense}
       >
         {decks.map((d) => (

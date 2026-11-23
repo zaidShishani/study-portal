@@ -31,7 +31,7 @@ export default function Card({ title, count, tabs, actions, onExpand, expanded =
           {title}
         </Typography>
         {count !== undefined && (
-          <Typography variant="body2" noWrap sx={{ fontFamily: fonts.mono, color: 'text.secondary' }}>
+          <Typography variant="body2" noWrap sx={{ flexShrink: 0, fontFamily: fonts.mono, color: 'text.secondary' }}>
             {count}
           </Typography>
         )}

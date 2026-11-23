@@ -15,7 +15,7 @@ test('add a card from home', async ({ page }) => {
   const deck = await post<{ id: number }>(page.request, '/api/decks', { title })
   await page.goto('/')
   const cards = page.getByRole('region', { name: 'Flashcards' })
-  await expect(cards.getByRole('link', { name: `Review ${title}` })).toHaveAttribute('aria-disabled', 'true')
+  await expect(cards.getByRole('button', { name: `Review ${title}` })).toBeDisabled()
 
   const form = cards.getByRole('form', { name: 'Quick add card' })
   await form.getByLabel('Deck').selectOption({ label: title })
@@ -24,7 +24,7 @@ test('add a card from home', async ({ page }) => {
   await form.getByRole('button', { name: 'Add' }).dblclick()
   await expect(form.getByLabel('Front')).toHaveValue('')
   // New cards are due today, so the deck's Review button turns on.
-  await expect(cards.getByRole('link', { name: `Review ${title}` })).not.toHaveAttribute('aria-disabled', 'true')
+  await expect(cards.getByRole('link', { name: `Review ${title}` })).toHaveAttribute('href', `/?focus=flashcards&review=${deck.id}`)
   const list = await (await page.request.get(`/api/decks/${deck.id}/cards?status=all`)).json()
   expect(list).toHaveLength(1)
   expect(list[0]).toMatchObject({ front: 'hola', back: 'hello' })

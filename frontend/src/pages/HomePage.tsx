@@ -5,6 +5,7 @@ import {
   ButtonGroup,
   Checkbox,
   CircularProgress,
+  IconButton,
   LinearProgress,
   NativeSelect,
   Snackbar,
@@ -14,6 +15,7 @@ import {
   type Theme,
 } from '@mui/material'
 import { useQueryClient } from '@tanstack/react-query'
+import AddIcon from '@mui/icons-material/Add'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
 import CalendarCard from '../components/CalendarCard'
@@ -47,6 +49,26 @@ import RoadmapsPage from './RoadmapsPage'
 
 const WIDE = `@media ${WIDE_QUERY}`
 const PHONE = (t: Theme) => t.breakpoints.down('sm')
+
+/** Ghost header action; an icon button at phone width so the header (and its count) fits. */
+function Ghost({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
+  return (
+    <>
+      <Button size="small" onClick={onClick} disabled={disabled} sx={(t) => ({ [PHONE(t)]: { display: 'none' } })}>
+        {label}
+      </Button>
+      <IconButton
+        size="small"
+        aria-label={label}
+        onClick={onClick}
+        disabled={disabled}
+        sx={(t) => ({ display: 'none', [PHONE(t)]: { display: 'inline-flex' } })}
+      >
+        <AddIcon fontSize="small" />
+      </IconButton>
+    </>
+  )
+}
 const TITLES: Record<PanelName, string> = {
   flashcards: 'Flashcards',
   leetcode: 'LeetCode',
@@ -108,17 +130,23 @@ function Flashcards() {
       <Box component="span" sx={{ ...mono, color: 'text.secondary' }}>
         {`${d.due_count} due`}
       </Box>
-      <Button
-        size="small"
-        variant="outlined"
-        component={Link}
-        to={focusUrl({ focus: 'flashcards', review: d.id })}
-        disabled={!d.due_count}
-        aria-label={`Review ${d.title}`}
-        sx={above}
-      >
-        Review
-      </Button>
+      {d.due_count ? (
+        <Button
+          size="small"
+          variant="outlined"
+          component={Link}
+          to={focusUrl({ focus: 'flashcards', review: d.id })}
+          aria-label={`Review ${d.title}`}
+          sx={above}
+        >
+          Review
+        </Button>
+      ) : (
+        // A plain disabled button (not a link), so a click doesn't fall through to the row link.
+        <Button size="small" variant="outlined" disabled aria-label={`Review ${d.title}`} sx={above}>
+          Review
+        </Button>
+      )}
     </ListRow>
   ))
 }
@@ -431,9 +459,7 @@ export default function HomePage() {
       count: due === undefined ? undefined : `${due} due`,
       actions: (
         <>
-          <Button size="small" onClick={() => setDialog('deck')}>
-            New deck
-          </Button>
+          <Ghost label="New deck" onClick={() => setDialog('deck')} />
           <Button size="small" variant="contained" component={Link} to={focusUrl({ focus: 'flashcards', review: 'all' })} disabled={!due}>
             Review all
           </Button>
@@ -441,7 +467,8 @@ export default function HomePage() {
       ),
       body: (
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'minmax(0, 1fr) 320px' }, height: { sm: '100%' } }}>
-          <Box sx={{ minHeight: 0, overflow: { sm: 'auto' } }}>
+          {/* One column: the card grows with the form, so the deck list is bounded and scrolls. */}
+          <Box sx={{ minHeight: 0, maxHeight: 240, overflow: 'auto', [WIDE]: { maxHeight: 'none' } }}>
             <Flashcards />
           </Box>
           <Box sx={{ minHeight: 0, overflow: { sm: 'auto' }, borderStyle: 'solid', borderColor: 'divider', borderWidth: { xs: '1px 0 0', sm: '0 0 0 1px' } }}>
@@ -453,9 +480,7 @@ export default function HomePage() {
     leetcode: {
       count: problems.data && `${problems.data.length} due`,
       actions: (
-        <Button size="small" onClick={() => setDialog('problem')}>
-          New problem
-        </Button>
+        <Ghost label="New problem" onClick={() => setDialog('problem')} />
       ),
       body: <LeetCode today={date} onError={onError} />,
     },
@@ -517,9 +542,7 @@ export default function HomePage() {
     },
     calendar: {
       actions: (
-        <Button size="small" onClick={() => setDialog('event')} disabled={!date}>
-          New event
-        </Button>
+        <Ghost label="New event" onClick={() => setDialog('event')} disabled={!date} />
       ),
       body: date ? <CalendarCard today={date} /> : today.error ? <Note error>{today.error.message}</Note> : <Loading />,
     },
