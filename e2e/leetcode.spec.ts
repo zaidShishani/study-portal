@@ -15,6 +15,8 @@ test('create a problem, log failed then solved, and the ladder advances', async 
   const title = `E2E problem ${Date.now()}`
   await page.goto('/')
   await page.getByRole('button', { name: 'Expand LeetCode' }).click()
+  // Home's header has its own New problem; wait for the expanded view so the click hits the page's button.
+  await expect(page.getByLabel('Difficulty')).toBeVisible()
   await page.getByRole('button', { name: 'New problem' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Title').fill(title)

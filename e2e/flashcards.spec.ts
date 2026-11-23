@@ -8,6 +8,8 @@ test('expanded flashcards: create deck, add card, review it by keyboard in the i
   await page.goto('/')
   await page.getByRole('button', { name: 'Expand Flashcards' }).click()
   const card = page.getByRole('region', { name: 'Flashcards' })
+  // Home's header has its own New deck; wait for the expanded view so the click hits the view's button.
+  await expect(card.getByRole('navigation', { name: 'Decks' })).toBeVisible()
   await card.getByRole('button', { name: 'New deck' }).click()
   await page.getByRole('dialog').getByLabel('Title').fill(title)
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()

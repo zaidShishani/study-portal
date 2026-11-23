@@ -44,12 +44,12 @@ export default function Card({ title, count, tabs, actions, onExpand, expanded =
           {title}
         </Typography>
         {count !== undefined && (
-          <Typography variant="body2" sx={{ fontFamily: fonts.mono, color: 'text.secondary' }}>
+          <Typography variant="body2" noWrap sx={{ flexShrink: 0, fontFamily: fonts.mono, color: 'text.secondary' }}>
             {count}
           </Typography>
         )}
         {tabs}
-        <Stack direction="row" sx={{ ml: 'auto', alignItems: 'center', gap: 1 }}>
+        <Stack direction="row" sx={{ ml: 'auto', alignItems: 'center', gap: 1, '& .MuiButton-root': { whiteSpace: 'nowrap' } }}>
           <Stack ref={setSlot} direction="row" sx={{ alignItems: 'center', gap: 1, '&:empty': { display: 'none' } }} />
           {actions}
           {onExpand && (
