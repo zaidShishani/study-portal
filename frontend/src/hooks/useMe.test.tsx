@@ -39,14 +39,16 @@ test('PATCHes the browser timezone once when it differs', async () => {
   expect(JSON.parse(String(patches()[0][1]?.body))).toEqual({ timezone: browserTz })
 })
 
-test('refreshes calendar queries once the new timezone is saved', async () => {
+test('refreshes calendar and dashboard queries once the new timezone is saved', async () => {
   const otherTz = browserTz === 'Pacific/Kiritimati' ? 'UTC' : 'Pacific/Kiritimati'
   const { hook, client } = setup(otherTz)
   client.setQueryData(['calendar', { from: '2026-11-01', to: '2026-11-30' }], { events: [] })
+  client.setQueryData(['dashboard'], { date: '2026-11-23' })
   await waitFor(() => expect(hook.result.current.data?.timezone).toBe(browserTz))
   await waitFor(() =>
     expect(client.getQueryState(['calendar', { from: '2026-11-01', to: '2026-11-30' }])?.isInvalidated).toBe(true),
   )
+  expect(client.getQueryState(['dashboard'])?.isInvalidated).toBe(true)
 })
 
 test('does not PATCH when the timezone already matches', async () => {

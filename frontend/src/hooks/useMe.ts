@@ -9,8 +9,9 @@ export function useMe() {
     mutationFn: updateMe,
     onSuccess: (me) => {
       queryClient.setQueryData(['me'], me)
-      // The calendar may have loaded with the old timezone's dates before this PATCH landed.
+      // The calendar and Today may have loaded with the old timezone's dates before this PATCH landed.
       queryClient.invalidateQueries({ queryKey: ['calendar'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },
     onError: (err) => console.warn('Could not save timezone', err),
   })

@@ -32,6 +32,7 @@ export type Card = {
 // Enum values exactly as the API (docs/ARCHITECTURE.md → Enums).
 export const DIFFICULTIES = ['Easy', 'Medium', 'Hard'] as const
 export type Difficulty = (typeof DIFFICULTIES)[number]
+export const DIFFICULTY_COLOR = { Easy: 'success', Medium: 'warning', Hard: 'error' } as const
 
 export const PATTERNS = [
   'Two Pointers',
@@ -130,6 +131,15 @@ export type Problem = ProblemInput & {
   retired_at: string | null
   created_at: string
   updated_at: string
+}
+
+export type Dashboard = {
+  date: string
+  decks: { id: number; title: string; due_count: number }[]
+  due_card_total: number
+  problems_due: { id: number; title: string; difficulty: Difficulty; due_date: string }[]
+  events_today: { event_id: number; title: string; start: string; end: string | null; all_day: boolean }[]
+  roadmaps: { id: number; title: string; done: number; total: number }[]
 }
 
 // Not `Notification`: that name is the DOM Notification global.

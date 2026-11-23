@@ -14,9 +14,7 @@ import {
   useUnretireProblem,
   useUpdateProblem,
 } from '../hooks/useProblems'
-import { RESULT_LABELS, type ProblemInput } from '../types'
-
-const DIFFICULTY_COLOR = { Easy: 'success', Medium: 'warning', Hard: 'error' } as const
+import { DIFFICULTY_COLOR, RESULT_LABELS, type ProblemInput } from '../types'
 
 export default function ProblemPage() {
   const { problemId = '' } = useParams()
