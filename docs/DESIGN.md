@@ -71,7 +71,7 @@ Page headings (`h4`/`h5` on sub-pages) are Geist 600; there is no page title or 
 - **`DifficultyDot`** (`components/DifficultyDot.tsx`): 6px colored dot + plain text.
 - **Buttons**: MUI `Button` variants — `text` = ghost, `outlined` = secondary (neutral border), `contained` = primary. Press scales to .98.
 - **No chips and no helper copy.** Difficulty = `DifficultyDot`; counts are plain Mono numbers; status (Due / Overdue) is plain text, Overdue in accent-text.
-- **Top bar**: wordmark 15/600; nav Home (active = amber underline), Settings, Logout (disabled); bell with an amber unread dot (no numeric badge) — the exact count stays in the aria-label ("Notifications, 2 unread").
+- **Top bar**: wordmark 15/600; nav Home (active = amber underline), Settings, Logout (disabled); bell with an amber unread dot (no numeric badge) — the exact count stays in the aria-label ("Notifications, 2 unread"). Full width with 32px side gutters (24px on phones). Other pages (Settings, not found) start at the same gutter, left-aligned, with content capped at 960px.
 
 ## Home layout (≥1100px)
 Top bar 56px; content = 12-column grid, 3 equal rows, 16px gap, padding 20px 32px 24px, filling the viewport height exactly (page never scrolls; lists scroll inside cards). Left cols 1–8: Flashcards (row 1), LeetCode (row 2), Roadmaps (row 3). Right cols 9–12: Calendar (row 1), Notes (rows 2–3). Below 1100px: one column (Flashcards, Calendar, LeetCode, Notes, Roadmaps), page may scroll, cards get a sensible min-height.
