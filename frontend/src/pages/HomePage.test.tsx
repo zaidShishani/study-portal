@@ -163,7 +163,7 @@ test('mini month: dots on busy days, today agenda, day selection, month paging',
   expect(within(link(cal, /Standup/)).getByText('09:00')).toBeTruthy()
   expect(href(cal, /Standup/)).toBe('/?focus=calendar')
   expect(href(cal, /1 card due/)).toBe('/?focus=flashcards&review=all')
-  expect(href(cal, /Two Sum/)).toBe('/?focus=leetcode&problem=7')
+  expect(href(cal, /1 problem due/)).toBe('/?focus=leetcode')
 
   // An overnight event on its second day has no start time that day.
   fireEvent.click(day(24))
@@ -172,7 +172,8 @@ test('mini month: dots on busy days, today agenda, day selection, month paging',
 
   fireEvent.click(day(27))
   expect(within(cal).getByRole('heading', { name: 'Nov 27' })).toBeTruthy()
-  expect(href(cal, /Learn SQL/)).toBe('/?focus=roadmaps&roadmap=3')
+  expect(href(cal, /1 checkpoint due/)).toBe('/?focus=roadmaps')
+  expect(within(cal).queryByText('Learn SQL')).toBeNull()
 
   fireEvent.click(day(26))
   expect(within(cal).getByText('Nothing scheduled.')).toBeTruthy()
