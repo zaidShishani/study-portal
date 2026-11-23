@@ -113,7 +113,7 @@ export default function DeckPage({ deckId }: { deckId: number }) {
           <Paper key={card.id} variant="outlined" sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               {/* Clamp long fronts to a short preview. */}
-              <Box sx={{ maxHeight: '6em', overflow: 'hidden', '& > div > :first-of-type': { mt: 0 } }}>
+              <Box sx={{ maxHeight: '6em', overflow: 'hidden', '& > div > :first-of-type': { mt: 0 }, '& > div > :last-child': { mb: 0 } }}>
                 <MarkdownView>{card.front}</MarkdownView>
               </Box>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>

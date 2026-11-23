@@ -181,6 +181,32 @@ test('notes card: recent pages with folder and relative time; New page opens it 
   expect(JSON.parse(String(post[1]!.body))).toEqual({ title: 'Untitled', folder_id: null })
 })
 
+test('panels cap rows at 5 with a Show all button that expands the panel', async () => {
+  const many = Array.from({ length: 7 }, (_, i) => i + 1)
+  renderPage({
+    ...full,
+    decks: many.map((id) => ({ id, title: `Deck ${id}`, due_count: 1 })),
+    problems_due: many.map((id) => ({ id, title: `Problem ${id}`, difficulty: 'Easy', due_date: '2026-11-23' })),
+    roadmaps: many.map((id) => ({ id, title: `Roadmap ${id}`, done: 0, total: 0 })),
+  })
+  await screen.findByText('Deck 1')
+  for (const [name, row] of [['Flashcards', 'Deck'], ['LeetCode', 'Problem'], ['Roadmaps', 'Roadmap']]) {
+    expect(within(panel(name)).getByText(`${row} 5`)).toBeTruthy()
+    expect(within(panel(name)).queryByText(`${row} 6`)).toBeNull()
+  }
+  expect(within(panel('Flashcards')).queryByRole('button', { name: 'Show all (5)' })).toBeNull()
+  fireEvent.click(within(panel('LeetCode')).getByRole('button', { name: 'Show all (7)' }))
+  expect(search()).toBe('?focus=leetcode')
+})
+
+test('a nested view whose h1 waits for data gets focus once the h1 appears', async () => {
+  renderPage()
+  fireEvent.click(await screen.findByRole('link', { name: /Two Sum/ }))
+  expect(search()).toBe('?focus=leetcode&problem=7')
+  const h1 = await screen.findByRole('heading', { level: 1, name: 'Problem not found' })
+  await waitFor(() => expect(document.activeElement).toBe(h1))
+})
+
 test('empty states and Start review disabled at 0', async () => {
   renderPage(empty)
   expect(await screen.findByText('No cards due.')).toBeTruthy()
