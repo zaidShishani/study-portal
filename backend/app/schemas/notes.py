@@ -52,6 +52,10 @@ class PageListItem(BaseModel):
     updated_at: datetime
 
 
+class RecentPageItem(PageListItem):
+    folder_name: str | None
+
+
 class PageOut(PageListItem):
     content: str
     created_at: datetime

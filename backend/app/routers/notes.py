@@ -17,6 +17,7 @@ from app.schemas.notes import (
     PageListItem,
     PageOut,
     PageUpdate,
+    RecentPageItem,
 )
 
 router = APIRouter(prefix="/api/notes", tags=["notes"])
@@ -136,6 +137,31 @@ def create_page(body: PageCreate, user: User = Depends(get_current_user), db: Se
     db.add(page)
     commit_or_folder_404(db)
     return page
+
+
+# Declared before /pages/{page_id} so "recent" isn't parsed as a page id.
+@router.get("/pages/recent", response_model=list[RecentPageItem])
+def recent_pages(
+    limit: int = Query(8, ge=1, le=20),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[Row[Any]]:
+    """The user's most recently edited pages, without content."""
+    return list(
+        db.execute(
+            select(
+                NotePage.id,
+                NotePage.title,
+                NotePage.folder_id,
+                NoteFolder.name.label("folder_name"),
+                NotePage.updated_at,
+            )
+            .outerjoin(NoteFolder, NoteFolder.id == NotePage.folder_id)  # composite FK: same owner
+            .where(NotePage.user_id == user.id)
+            .order_by(NotePage.updated_at.desc(), NotePage.id.desc())
+            .limit(limit)
+        )
+    )
 
 
 @router.get("/pages/{page_id}", response_model=PageOut)

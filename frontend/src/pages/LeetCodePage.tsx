@@ -156,7 +156,7 @@ export default function LeetCodePage() {
                     tabIndex={0}
                     onClick={open}
                     onKeyDown={(e) => e.key === 'Enter' && e.target === e.currentTarget && open()}
-                    sx={{ cursor: 'pointer', bgcolor: due ? 'action.selected' : undefined }}
+                    sx={{ cursor: 'pointer', bgcolor: due ? 'action.hover' : undefined }}
                   >
                     <TableCell>
                       {p.link && isHttpUrl(p.link) ? (

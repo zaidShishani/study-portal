@@ -1,4 +1,5 @@
 import { createTheme, type Shadows } from '@mui/material/styles'
+import type {} from '@mui/x-date-pickers/themeAugmentation'
 import { fonts, radius, tokens } from './tokens'
 
 const PASTEL_COLORS = ['success', 'warning', 'error', 'info'] as const
@@ -24,7 +25,7 @@ export function createAppTheme(mode: 'light' | 'dark') {
       background: { default: t.canvas, paper: t.surface },
       text: { primary: t.text, secondary: t.textMuted },
       divider: t.border,
-      action: { hover: t.surfaceHover, selected: t.accentSoft },
+      action: { active: t.textMuted, hover: t.surfaceHover, selected: t.accentSoft },
     },
     shape: { borderRadius: radius },
     shadows: Array(25).fill('none') as Shadows,
@@ -44,7 +45,7 @@ export function createAppTheme(mode: 'light' | 'dark') {
             '--fc-border-color': t.border,
             '--fc-page-bg-color': t.surface,
             '--fc-neutral-bg-color': t.surfaceHover,
-            '--fc-today-bg-color': t.accentSoft,
+            '--fc-today-bg-color': t.surfaceHover,
             '--fc-highlight-color': t.accentSoft,
             '--fc-now-indicator-color': t.accent,
             '--fc-list-event-hover-bg-color': t.surfaceHover,
@@ -94,7 +95,14 @@ export function createAppTheme(mode: 'light' | 'dark') {
       },
       MuiOutlinedInput: {
         styleOverrides: {
-          root: { borderRadius: radius, '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: t.accent } },
+          root: { borderRadius: radius, '&.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline': { borderColor: t.accent } },
+          notchedOutline: { borderColor: t.border },
+        },
+      },
+      // Date/time picker fields use their own input, so they need the same border/focus rules.
+      MuiPickersOutlinedInput: {
+        styleOverrides: {
+          root: { borderRadius: radius, '&.Mui-focused:not(.Mui-error) .MuiPickersOutlinedInput-notchedOutline': { borderColor: t.accent } },
           notchedOutline: { borderColor: t.border },
         },
       },

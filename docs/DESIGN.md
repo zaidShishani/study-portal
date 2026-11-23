@@ -37,7 +37,7 @@ Direction: modern, clean, minimalist. Warm monochrome with one amber accent.
 | red (`error`) | `#FDEBEC` / `#9F2F2D` | `rgba(239,68,68,0.12)` / `#F2948F` |
 | blue (`info`) | `#E1F3FE` / `#1F6C9F` | `rgba(59,130,246,0.12)` / `#8CC2EE` |
 
-Usage: difficulty Easy/Medium/Hard = green/yellow/red; overdue = red, due = yellow. Calendar: own events solid primary, cards due green, problems due yellow, checkpoints blue.
+Usage: difficulty Easy/Medium/Hard = green/yellow/red; overdue = red, due = yellow. Due rows are not tinted amber (that would hide yellow chips); they use surface-hover and the chip carries the meaning. Calendar: own events solid primary, cards due green, problems due yellow, checkpoints blue.
 
 ### Contrast (WCAG AA ≥ 4.5:1)
 | | on canvas | on surface |
@@ -50,11 +50,11 @@ Usage: difficulty Easy/Medium/Hard = green/yellow/red; overdue = red, due = yell
 Pastel chip text on its own bg: light 4.62–6.26, dark 6.47–7.55. The palette's `contrastThreshold` is 4.5, so MUI picks AA text on any filled color.
 
 ## Accent rules
-Amber only for: focus rings, active/selected states, progress bars, badges, links (underline color — link text stays `text` because amber text is 3.19:1 on white), and the due/overdue emphasis (e.g. overdue checkpoint border). Never large backgrounds. Primary buttons are solid monochrome (`primary`).
+Amber only for: focus rings, active/selected states (nav item, toggle), progress bars, badges, links (underline color — link text stays `text` because amber text is 3.19:1 on white), and the due/overdue emphasis (e.g. overdue checkpoint border). Never large backgrounds. Primary buttons are solid monochrome (`primary`).
 
 ## Shape
 - ONE radius: `10px` (`theme.shape.borderRadius`; `borderRadius: 1` in `sx`). Every container, card, dialog, menu, input, button and chip.
-- Borders `1px solid border` on every Paper (cards, dialogs, menus). No drop shadows (`theme.shadows` are all `none`). Hover may use `0 2px 8px rgba(0,0,0,0.04)` (light only; `tokens.hoverShadow`).
+- Borders `1px solid border` on every Paper (cards, dialogs, menus). No drop shadows (`theme.shadows` are all `none`).
 
 ## Spacing
 8px grid (`theme.spacing(1)` = 8px). Card padding 24px (`p: 3`). Page max width 1200px. Gaps 24px (`gap: 3`).
@@ -69,4 +69,4 @@ Amber only for: focus rings, active/selected states, progress bars, badges, link
 Transitions 150–200ms (theme `transitions.duration`), on color / opacity / transform only. `prefers-reduced-motion: reduce` disables transitions and animations globally.
 
 ## Third-party widgets
-FullCalendar reads its `--fc-*` CSS variables, which the theme sets on `:root` from tokens (borders, page bg, today = accent-soft, buttons = surface/border, active button = accent). Markdown code blocks use surface-hover + mono.
+FullCalendar reads its `--fc-*` CSS variables, which the theme sets on `:root` from tokens (borders, page bg, today = surface-hover, buttons = surface/border, active button = accent). MUI X picker fields (`MuiPickersOutlinedInput`) get the same border/focus rules as regular inputs. Markdown code blocks use surface-hover + mono.

@@ -62,7 +62,7 @@ export default function CalendarPage() {
           extendedProps: { eventId: e.event_id },
         })),
         ...data.card_due.map((c) => ({
-          title: `${c.count} cards due`,
+          title: `${c.count} ${c.count === 1 ? 'card' : 'cards'} due`,
           start: c.date,
           allDay: true,
           ...colors.cards,
@@ -118,7 +118,8 @@ export default function CalendarPage() {
           ] as const
         ).map(([key, label]) => (
           <Stack key={key} component="li" direction="row" sx={{ alignItems: 'center', gap: 0.75 }}>
-            <Box sx={{ width: 12, height: 12, borderRadius: 0.5, bgcolor: colors[key].backgroundColor, border: 1, borderColor: colors[key].textColor }} />
+            {/* A deliberate dot, filled with the item's strong color so pastels stay visible. */}
+            <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: key === 'event' ? colors.event.backgroundColor : colors[key].textColor }} />
             <Typography variant="body2">{label}</Typography>
           </Stack>
         ))}
