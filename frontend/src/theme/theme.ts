@@ -7,7 +7,8 @@ const heading = (size: number) => ({ fontSize: px(size), fontWeight: 600, lineHe
 
 export function createAppTheme(mode: 'light' | 'dark') {
   const t = tokens[mode]
-  const ring = { outline: `2px solid ${t.accent}`, outlineOffset: 2 }
+  // accentText: the light fill amber is only 2.94:1 on canvas; the ring needs 3:1 on every background.
+  const ring = { outline: `2px solid ${t.accentText}`, outlineOffset: 2 }
   // main = difficulty / meaning color (dots, fills, borders); light = its soft background.
   const meaning = (main: string) => ({ main, light: alpha(main, 0.14) })
 
@@ -87,6 +88,10 @@ export function createAppTheme(mode: 'light' | 'dark') {
           },
           // FullCalendar ships its own focus shadow; the accent ring replaces it.
           '.fc .fc-button': { borderRadius: radius, boxShadow: 'none !important' },
+          // Pull FullCalendar's own type onto the scale.
+          '.fc .fc-toolbar-title': { fontSize: px(14), fontWeight: 600 },
+          '.fc th': { fontWeight: 500 },
+          '.fc .fc-event': { fontSize: px(12) },
           ':focus-visible': ring,
           a: { color: 'inherit', textDecorationColor: t.accent, textUnderlineOffset: '0.2em' },
           'code, kbd, pre': { fontFamily: fonts.mono },
@@ -102,7 +107,8 @@ export function createAppTheme(mode: 'light' | 'dark') {
         styleOverrides: { root: { border: 0, borderBottom: `1px solid ${t.border}`, backgroundColor: t.surface } },
       },
       MuiDrawer: { styleOverrides: { paper: { border: 0, borderRight: `1px solid ${t.border}` } } },
-      MuiTableCell: { styleOverrides: { root: { borderBottom: `1px solid ${t.border}` } } },
+      // Small tables fall back to body2 (12px meta); table text is list text (13px).
+      MuiTableCell: { styleOverrides: { root: { borderBottom: `1px solid ${t.border}` }, body: { fontSize: px(13) } } },
       // Variants: text = ghost, outlined = secondary, contained = primary.
       MuiButton: {
         defaultProps: { disableElevation: true },

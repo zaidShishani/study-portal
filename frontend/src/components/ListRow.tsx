@@ -1,12 +1,16 @@
 import type { ReactNode } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import { Box, ButtonBase } from '@mui/material'
 import { motion } from '../theme/tokens'
 
-/** 40px list row with a 1px divider; a button when `onClick` is given. */
-export default function ListRow({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
+type Props = { children: ReactNode; to?: string; onClick?: () => void }
+
+/** 40px list row with a 1px divider; a link when `to` is given, a button when only `onClick` is. */
+export default function ListRow({ children, to, onClick }: Props) {
   return (
     <Box
-      component={onClick ? ButtonBase : 'div'}
+      component={to ? RouterLink : onClick ? ButtonBase : 'div'}
+      to={to}
       onClick={onClick}
       sx={{
         display: 'flex',
@@ -17,6 +21,8 @@ export default function ListRow({ children, onClick }: { children: ReactNode; on
         minHeight: 40,
         px: 2,
         textAlign: 'left',
+        color: 'inherit',
+        textDecoration: 'none',
         typography: 'body1',
         borderBottom: 1,
         borderColor: 'action.hover', // action.hover is the `line` token

@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, expect, test, vi } from 'vitest'
 import Card from './Card'
 import ListRow from './ListRow'
@@ -49,4 +50,13 @@ test('ListRow is a button only when clickable', () => {
   expect(screen.queryByRole('button', { name: 'Static' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Two Sum' }))
   expect(onClick).toHaveBeenCalledTimes(1)
+})
+
+test('ListRow with `to` is a link', () => {
+  render(
+    <MemoryRouter>
+      <ListRow to="/?focus=leetcode&problem=1">Two Sum</ListRow>
+    </MemoryRouter>,
+  )
+  expect(screen.getByRole('link', { name: 'Two Sum' }).getAttribute('href')).toBe('/?focus=leetcode&problem=1')
 })
