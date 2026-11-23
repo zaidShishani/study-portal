@@ -41,7 +41,7 @@ test('top bar links navigate to Settings and Home, marking the active one', () =
   expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Settings')
   expect(within(nav).getByRole('link', { name: 'Settings' }).getAttribute('aria-current')).toBe('page')
   fireEvent.click(within(nav).getByRole('link', { name: 'Home' }))
-  expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Today')
+  expect(screen.getByRole('region', { name: 'Flashcards' })).toBeTruthy()
   expect(within(nav).getByRole('link', { name: 'Home' }).getAttribute('aria-current')).toBe('page')
 })
 

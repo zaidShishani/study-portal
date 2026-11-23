@@ -25,7 +25,8 @@ test('create deck, add card, review Right, card leaves the queue', async ({ page
   await expect(page.getByText('1 of 1')).toBeVisible()
   await expect(page.getByText('2 + 2')).toBeVisible()
   await page.getByRole('button', { name: 'Show answer (Space)' }).click()
-  await expect(page.getByText('4', { exact: true })).toBeVisible()
+  // Scoped: the other home cards stay in the DOM (hidden) while one is expanded.
+  await expect(page.getByRole('region', { name: 'Flashcards' }).getByText('4', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Right (2)' }).click()
   await expect(page.getByRole('heading', { name: 'Done! Reviewed 1 card.' })).toBeVisible()
 

@@ -59,32 +59,33 @@ test('create a weekly event, see it on the expected days, edit its title, delete
 test('home calendar card: dot and agenda for today, day selection, expand opens the full calendar', async ({ page, baseURL }) => {
   const title = `E2E agenda ${Date.now()}`
   // Today 23:00-23:30 local, so it stays on today's date whatever time the test runs.
-  const [start, end, todayNum] = await page.evaluate(() => {
+  const [start, end, todayNum, monthName] = await page.evaluate(() => {
     const d = new Date()
     d.setHours(23, 0, 0, 0)
-    return [d.toISOString(), new Date(d.getTime() + 1_800_000).toISOString(), String(d.getDate())]
+    return [d.toISOString(), new Date(d.getTime() + 1_800_000).toISOString(), String(d.getDate()), d.toLocaleDateString('en-US', { month: 'long' })]
   })
+  const todayName = `${monthName} ${todayNum}`
   const res = await page.request.post('/api/events', { data: { title, start_at: start, end_at: end } })
   expect(res.status()).toBe(201)
   const { id } = await res.json()
 
   await page.goto('/')
   const card = page.getByRole('region', { name: 'Calendar' })
-  await expect(card.getByText('Agenda for today')).toBeVisible()
+  await expect(card.getByRole('heading', { name: 'Today' })).toBeVisible()
   const item = card.getByRole('link', { name: new RegExp(title) })
   await expect(item).toBeVisible()
-  await expect(card.getByRole('gridcell', { name: todayNum, exact: true })).toHaveAttribute('aria-description', 'Has items')
+  await expect(card.getByRole('button', { name: todayName, exact: true })).toHaveAttribute('aria-description', 'Has items')
 
   await item.click()
   await expect(page).toHaveURL(new URL('/?focus=calendar', baseURL).href)
   await expect(page.getByRole('heading', { level: 1, name: 'Calendar' })).toBeVisible()
   await expect(page.locator('.fc')).toBeVisible()
-  await page.getByRole('button', { name: 'Back to home' }).click()
+  await page.getByRole('button', { name: 'Collapse Calendar' }).click()
 
   // Another day in the visible month drops today's event from the list.
-  const other = todayNum === '1' ? '2' : '1'
-  await card.getByRole('gridcell', { name: other, exact: true }).click()
-  await expect(card.getByText(/^Agenda for /)).not.toHaveText('Agenda for today')
+  const other = `${monthName} ${todayNum === '1' ? '2' : '1'}`
+  await card.getByRole('button', { name: other, exact: true }).click()
+  await expect(card.getByRole('heading', { name: 'Today' })).toHaveCount(0)
   await expect(item).toHaveCount(0)
 
   await page.getByRole('button', { name: 'Expand Calendar' }).click()
