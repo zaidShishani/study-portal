@@ -63,11 +63,12 @@ export default function ReviewPage({ deckId, title }: Props) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement
-      // Leave focused controls alone, e.g. Space must activate a focused button.
-      const native = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A']
-      if (e.ctrlKey || e.metaKey || e.altKey || t.isContentEditable || native.includes(t.tagName)) return
+      // An open dialog/menu (e.g. New card) owns the keyboard even though focus sits on its container.
+      if (document.querySelector('[role="dialog"], [role="menu"], [role="listbox"]')) return
+      if (e.ctrlKey || e.metaKey || e.altKey || t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return
       if (e.key === ' ') {
-        if (!card) return
+        // Space must still activate a focused button or link; 1 / 2 work there (e.g. right after picking a deck).
+        if (!card || ['BUTTON', 'A'].includes(t.tagName)) return
         e.preventDefault()
         setFlipped(true)
       } else if (e.key === '1') answer(false)

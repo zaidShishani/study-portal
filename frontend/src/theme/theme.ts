@@ -127,15 +127,24 @@ export function createAppTheme(mode: 'light' | 'dark') {
       MuiIconButton: { styleOverrides: { root: { borderRadius: radius } } },
       MuiOutlinedInput: {
         styleOverrides: {
-          root: { borderRadius: radius, '&.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline': { borderColor: t.accent } },
+          root: {
+            borderRadius: radius,
+            '&.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline': { borderColor: t.accent },
+            // 13px text × 1.4375 line + 2 × 6.5px = 32px small fields (MUI's 8.5px gives 36).
+            '&.MuiInputBase-sizeSmall .MuiInputBase-input:not(textarea, .MuiAutocomplete-input)': { paddingBlock: 6.5 },
+          },
           notchedOutline: { borderColor: t.border },
         },
       },
+      // Unshrunk small label re-centred for the 32px field.
+      MuiInputLabel: { styleOverrides: { sizeSmall: { '&:not(.MuiInputLabel-shrink)': { transform: 'translate(14px, 7px) scale(1)' } } } },
       // Date/time picker fields use their own input, so they need the same border/focus rules.
       MuiPickersOutlinedInput: {
         styleOverrides: {
           root: { borderRadius: radius, '&.Mui-focused:not(.Mui-error) .MuiPickersOutlinedInput-notchedOutline': { borderColor: t.accent } },
           notchedOutline: { borderColor: t.border },
+          // Fields are small everywhere (default size below): 32px like the other inputs.
+          sectionsContainer: { paddingBlock: 6.5 },
         },
       },
       // Controls are 28–32px: fields default to the small (32px, 13px text) size, dialogs included.

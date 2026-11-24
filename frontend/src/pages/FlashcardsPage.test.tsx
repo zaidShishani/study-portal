@@ -100,6 +100,14 @@ test('deckId selects that deck; reviewAll reviews every deck', async () => {
   await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/review/cards', expect.anything()))
 })
 
+test('an unknown deck id shows no review panel', async () => {
+  const fetchMock = mockApi([deck(1, 'Biology')])
+  renderPage({ deckId: 999 })
+  expect(await screen.findByRole('link', { name: /Biology/ })).toBeTruthy()
+  expect(screen.queryByRole('heading', { name: /^Review · / })).toBeNull()
+  expect(fetchMock.mock.calls.some(([url]) => url.startsWith('/api/review/'))).toBe(false)
+})
+
 test('header actions: Review all links to the all-decks review, disabled when nothing is due', async () => {
   mockApi([deck(1, 'Biology')])
   renderPage()

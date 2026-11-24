@@ -86,7 +86,7 @@ test('renders problem details, safe link and markdown', async () => {
   expect(screen.getByText('Easy')).toBeTruthy()
   expect(detail('Pattern')).toBe('Two Pointers')
   expect(detail('Stage')).toBe('0')
-  expect(detail('Next due')).toBe('2026-11-22')
+  expect(detail('Next due')).toBe('Nov 22, 2026')
   expect(detail('Minutes')).toBe('12')
   expect(screen.getByText('hash map').tagName).toBe('STRONG')
   expect(screen.getByText('Some notes')).toBeTruthy()
@@ -115,7 +115,7 @@ test('attempt dialog validates, submits result + minutes and the page updates', 
   fireEvent.change(within(dialog).getByLabelText('Minutes (optional)'), { target: { value: '25' } })
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
   await waitFor(() => expect(detail('Stage')).toBe('1'))
-  expect(detail('Next due')).toBe('2026-11-23')
+  expect(detail('Next due')).toBe('Nov 23, 2026')
   expect(detail('Last result')).toBe('Failed')
   expect(detail('Minutes')).toBe('25')
   const [url, init] = posts(fetchMock, '/attempt')[0]
@@ -152,7 +152,7 @@ test('retired problem shows Retired and can be un-retired', async () => {
   expect(screen.queryByRole('button', { name: 'Log attempt' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Un-retire' }))
   expect(await screen.findByRole('button', { name: 'Log attempt' })).toBeTruthy()
-  expect(detail('Next due')).toBe('2026-11-23')
+  expect(detail('Next due')).toBe('Nov 23, 2026')
   expect(posts(fetchMock, '/unretire')[0][0]).toBe('/api/problems/7/unretire')
 })
 

@@ -44,7 +44,12 @@ export default function Card({ title, count, tabs, actions, onExpand, expanded =
           {title}
         </Typography>
         {count !== undefined && (
-          <Typography variant="body2" noWrap sx={{ flexShrink: 0, fontFamily: fonts.mono, color: 'text.secondary' }}>
+          // Expanded headers carry the view's buttons; on phones the count gives way so they fit.
+          <Typography
+            variant="body2"
+            noWrap
+            sx={{ flexShrink: 0, fontFamily: fonts.mono, color: 'text.secondary', display: expanded ? { xs: 'none', sm: 'block' } : undefined }}
+          >
             {count}
           </Typography>
         )}

@@ -1,7 +1,10 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Box, Button, Link, Snackbar, Stack, Typography } from '@mui/material'
+import DeleteIcon from '@mui/icons-material/DeleteOutlined'
+import EditIcon from '@mui/icons-material/EditOutlined'
 import { HeaderActions } from '../components/Card'
+import HeaderButton from '../components/HeaderButton'
 import AttemptDialog from '../components/AttemptDialog'
 import ConfirmDialog from '../components/ConfirmDialog'
 import MarkdownView from '../components/MarkdownView'
@@ -17,7 +20,12 @@ import {
 } from '../hooks/useProblems'
 import DifficultyDot from '../components/DifficultyDot'
 import { focusUrl } from '../hooks/useFocus'
+import dayjs from 'dayjs'
+import { fonts } from '../theme/tokens'
 import { RESULT_LABELS, type ProblemInput } from '../types'
+
+const date = (ymd: string | null) =>
+  ymd ? <Box component="span" sx={{ fontFamily: fonts.mono, fontSize: 12 }}>{dayjs(ymd).format('MMM D, YYYY')}</Box> : '—'
 
 export default function ProblemPage({ problemId }: { problemId: number }) {
   const navigate = useNavigate()
@@ -68,22 +76,18 @@ export default function ProblemPage({ problemId }: { problemId: number }) {
   const details: [string, ReactNode][] = [
     ['Pattern', p.pattern],
     ['Stage', p.stage],
-    ['Next due', p.retired_at ? 'Retired' : (p.due_date ?? '—')],
+    ['Next due', p.retired_at ? 'Retired' : date(p.due_date)],
     ['Reviews', p.review_count],
     ['Last result', p.last_result ? RESULT_LABELS[p.last_result] : '—'],
-    ['Solved', p.solved_date ?? '—'],
+    ['Solved', date(p.solved_date)],
     ['Minutes', p.minutes ?? '—'],
   ]
 
   return (
     <Box sx={{ p: 3 }}>
       <HeaderActions>
-        <Button size="small" onClick={() => setEditing(true)}>
-          Edit
-        </Button>
-        <Button size="small" color="error" onClick={() => setDeleteOpen(true)}>
-          Delete
-        </Button>
+        <HeaderButton label="Edit" icon={<EditIcon fontSize="small" />} onClick={() => setEditing(true)} />
+        <HeaderButton label="Delete" color="error" icon={<DeleteIcon fontSize="small" />} onClick={() => setDeleteOpen(true)} />
         {p.retired_at ? (
           <Button
             size="small"

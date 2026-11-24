@@ -3,7 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Box, Button, IconButton, Snackbar, Typography } from '@mui/material'
 import DeleteIcon from '@mui/icons-material/DeleteOutlined'
 import EditIcon from '@mui/icons-material/EditOutlined'
+import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolderOutlined'
 import { HeaderActions } from '../components/Card'
+import HeaderButton from '../components/HeaderButton'
 import CardDialog from '../components/CardDialog'
 import ConfirmDialog from '../components/ConfirmDialog'
 import DeckDialog from '../components/DeckDialog'
@@ -69,12 +71,8 @@ export default function FlashcardsPage({ deckId, reviewAll = false }: Props) {
   return (
     <>
       <HeaderActions>
-        <Button size="small" onClick={() => setEditing({})}>
-          New deck
-        </Button>
-        <Button size="small" variant="outlined" disabled={!selected} onClick={() => setNewCard(true)}>
-          New card
-        </Button>
+        <HeaderButton label="New deck" icon={<CreateNewFolderIcon fontSize="small" />} onClick={() => setEditing({})} />
+        <HeaderButton label="New card" variant="outlined" disabled={!selected} onClick={() => setNewCard(true)} />
         <Button size="small" variant="contained" component={Link} to={focusUrl({ focus: 'flashcards', review: 'all' })} disabled={!due}>
           Review all
         </Button>
@@ -149,7 +147,7 @@ export default function FlashcardsPage({ deckId, reviewAll = false }: Props) {
         </Box>
 
         <Box sx={{ borderLeft: 1, borderColor: 'divider', p: '20px 24px' }}>
-          {decks.data && (
+          {decks.data && (reviewAll || selected) && (
             <ReviewPage
               key={reviewAll ? 'all' : selectedId}
               deckId={reviewAll ? undefined : selectedId}

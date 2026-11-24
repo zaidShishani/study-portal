@@ -12,6 +12,7 @@ import TextToggle from '../components/TextToggle'
 import { useCards, useDeleteCard, useUnretireCard, useUpdateCard } from '../hooks/useCards'
 import { useDeck } from '../hooks/useDecks'
 import { focusUrl } from '../hooks/useFocus'
+import { fonts } from '../theme/tokens'
 import type { Card, CardStatus } from '../types'
 
 // Crude markdown strip for one-line previews and button labels, so screen readers can tell cards apart.
@@ -91,12 +92,13 @@ export default function DeckPage({ deckId, actions }: Props) {
 
   return (
     <>
-      <Stack direction="row" sx={{ alignItems: 'center', gap: 1, minHeight: 44, px: 2, borderBottom: 1, borderColor: 'action.hover' }}>
-        <Typography variant="subtitle2" component="h3" sx={{ ...line, minWidth: 0 }}>
+      {/* Wraps on phones: the toggle drops to its own line and the title keeps room to show. */}
+      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1, minHeight: 44, px: 2, py: 0.5, borderBottom: 1, borderColor: 'action.hover' }}>
+        <Typography variant="subtitle2" component="h3" sx={{ ...line, minWidth: 96 }}>
           {deck.data?.title}
         </Typography>
         {count !== undefined && (
-          <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0, fontFamily: fonts.mono }}>
             {count} {count === 1 ? 'card' : 'cards'}
           </Typography>
         )}

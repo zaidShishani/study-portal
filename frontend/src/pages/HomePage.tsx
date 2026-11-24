@@ -5,7 +5,6 @@ import {
   ButtonGroup,
   Checkbox,
   CircularProgress,
-  IconButton,
   LinearProgress,
   NativeSelect,
   Snackbar,
@@ -15,9 +14,9 @@ import {
   type Theme,
 } from '@mui/material'
 import { useQueryClient } from '@tanstack/react-query'
-import AddIcon from '@mui/icons-material/Add'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
+import Ghost from '../components/HeaderButton'
 import CalendarCard from '../components/CalendarCard'
 import Card from '../components/Card'
 import DeckDialog from '../components/DeckDialog'
@@ -48,25 +47,6 @@ import RoadmapsPage from './RoadmapsPage'
 const WIDE = `@media ${WIDE_QUERY}`
 const PHONE = (t: Theme) => t.breakpoints.down('sm')
 
-/** Ghost header action; an icon button at phone width so the header (and its count) fits. */
-function Ghost({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
-  return (
-    <>
-      <Button size="small" onClick={onClick} disabled={disabled} sx={(t) => ({ [PHONE(t)]: { display: 'none' } })}>
-        {label}
-      </Button>
-      <IconButton
-        size="small"
-        aria-label={label}
-        onClick={onClick}
-        disabled={disabled}
-        sx={(t) => ({ display: 'none', [PHONE(t)]: { display: 'inline-flex' } })}
-      >
-        <AddIcon fontSize="small" />
-      </IconButton>
-    </>
-  )
-}
 const TITLES: Record<PanelName, string> = {
   flashcards: 'Flashcards',
   leetcode: 'LeetCode',

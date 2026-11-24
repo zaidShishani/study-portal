@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { Card } from '../types'
+import CardDialog from '../components/CardDialog'
 import ReviewPage from './ReviewPage'
 
 afterEach(() => {
@@ -115,6 +116,33 @@ test('shortcuts leave a focused button alone', async () => {
   expect(await screen.findByText('Q one')).toBeTruthy()
   fireEvent.keyDown(screen.getByRole('button', { name: 'Show answer Space' }), { key: ' ' })
   expect(screen.queryByText('A one')).toBeNull()
+})
+
+test('an open dialog (e.g. New card) blocks the shortcuts', async () => {
+  const fetchMock = mockApi([card(1, 'Q one', 'A one')])
+  renderPage()
+  expect(await screen.findByText('Q one')).toBeTruthy()
+  fireEvent.keyDown(window, { key: ' ' })
+  render(<CardDialog onSubmit={async () => {}} onClose={() => {}} />)
+  // MUI focuses the dialog container (a DIV), so only the open-dialog check stops this.
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: '2' })
+  fireEvent.keyDown(window, { key: '1' })
+  expect(posts(fetchMock)).toHaveLength(0)
+})
+
+test('1 / 2 work while a link has focus (e.g. right after picking a deck); Space there stays native', async () => {
+  const fetchMock = mockApi([card(1, 'Q one', 'A one')])
+  renderPage()
+  expect(await screen.findByText('Q one')).toBeTruthy()
+  const link = document.createElement('a')
+  link.href = '#deck'
+  document.body.appendChild(link)
+  fireEvent.keyDown(link, { key: ' ' })
+  expect(screen.queryByText('A one')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Show answer Space' }))
+  fireEvent.keyDown(link, { key: '2' })
+  await waitFor(() => expect(posts(fetchMock)).toEqual([['/api/cards/1/review', { correct: true }]]))
+  link.remove()
 })
 
 test('a 409 (already reviewed elsewhere) shows the error and advances', async () => {

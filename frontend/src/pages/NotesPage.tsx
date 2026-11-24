@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Box, Button, Snackbar, Stack, TextField, Typography } from '@mui/material'
+import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolderOutlined'
 import { HeaderActions } from '../components/Card'
+import HeaderButton from '../components/HeaderButton'
 import { WIDE_QUERY } from '../hooks/useExpandFlip'
 import { buildTree, type TreeLevel } from '../api/notes'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -148,9 +150,7 @@ export default function NotesPage({ initialPageId, onDirtyChange }: Props) {
   return (
     <>
       <HeaderActions>
-        <Button size="small" onClick={() => setDialog('folder')}>
-          New folder
-        </Button>
+        <HeaderButton label="New folder" icon={<CreateNewFolderIcon fontSize="small" />} onClick={() => setDialog('folder')} />
         <Button size="small" variant="contained" onClick={() => canLeavePage() && setDialog('page')}>
           New page
         </Button>

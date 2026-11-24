@@ -45,3 +45,21 @@ test('expanded flashcards: create deck, add card, review it by keyboard in the i
   const queue = await page.request.get(`/api/review/cards?deck_id=${deckId}`)
   expect(await queue.json()).toEqual([])
 })
+
+test('expanded headers fit a 375px phone: no horizontal page scroll (flashcards, problem)', async ({ page }) => {
+  const deck = await (await page.request.post('/api/decks', { data: { title: `E2E phone deck with a long name ${Date.now()}` } })).json()
+  const problem = await (await page.request.post('/api/problems', { data: { title: `E2E phone ${Date.now()}`, difficulty: 'Easy', pattern: 'Math' } })).json()
+  await page.setViewportSize({ width: 375, height: 812 })
+  for (const [url, panel, ready] of [
+    [`/?focus=flashcards&deck=${deck.id}`, 'Flashcards', page.getByRole('button', { name: 'New deck' })],
+    [`/?focus=leetcode&problem=${problem.id}`, 'LeetCode', page.getByRole('button', { name: 'Log attempt' })],
+  ] as const) {
+    await page.goto(url)
+    await expect(ready).toBeVisible()
+    expect(await page.evaluate(() => document.scrollingElement!.scrollWidth <= innerWidth)).toBe(true)
+    // The header's last control (collapse) stays inside the card.
+    const card = (await page.getByRole('region', { name: panel }).boundingBox())!
+    const collapse = (await page.getByRole('button', { name: `Collapse ${panel}` }).boundingBox())!
+    expect(collapse.x + collapse.width).toBeLessThanOrEqual(card.x + card.width)
+  }
+})

@@ -33,7 +33,7 @@ test('create a problem, log failed then solved, and the ladder advances', async 
   const tomorrow = await page.evaluate(() => {
     const d = new Date()
     d.setDate(d.getDate() + 1)
-    return d.toLocaleDateString('en-CA')
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) // "Nov 24, 2026", as shown
   })
   await logAttempt(page, 'Failed')
   await expect(detail(page, 'Stage')).toHaveText('1')
