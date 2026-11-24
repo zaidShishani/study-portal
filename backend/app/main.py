@@ -1,6 +1,9 @@
+import json
 from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -34,6 +37,14 @@ async def limit_body_size(request: Request, call_next: Callable[[Request], Await
     if length.isdigit() and int(length) > MAX_BODY_BYTES:
         return JSONResponse({"detail": "Request body too large"}, status_code=413)
     return await call_next(request)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error(request: Request, exc: RequestValidationError) -> Response:
+    # FastAPI's default body, but ASCII-escaped: the echoed input may hold a lone surrogate
+    # (JSON "\ud83d", already rejected by Pydantic) that can't be UTF-8 encoded -> 500.
+    body = json.dumps({"detail": jsonable_encoder(exc.errors())})
+    return Response(body, status_code=422, media_type="application/json")
 
 
 app.add_middleware(
