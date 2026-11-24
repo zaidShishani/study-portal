@@ -1,44 +1,31 @@
-import { useState, type MouseEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
-import {
-  Button,
-  IconButton,
-  Link,
-  Snackbar,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
-} from '@mui/material'
-import AddIcon from '@mui/icons-material/Add'
-import DeleteIcon from '@mui/icons-material/Delete'
-import EditIcon from '@mui/icons-material/Edit'
+import { useState } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
+import { Box, Button, IconButton, Snackbar, Stack, TextField, Typography } from '@mui/material'
+import DeleteIcon from '@mui/icons-material/DeleteOutlined'
+import EditIcon from '@mui/icons-material/EditOutlined'
+import OpenInNewIcon from '@mui/icons-material/OpenInNew'
+import { HeaderActions } from '../components/Card'
 import ConfirmDialog from '../components/ConfirmDialog'
 import DifficultyDot from '../components/DifficultyDot'
+import ListRow from '../components/ListRow'
 import ProblemDialog from '../components/ProblemDialog'
+import TextToggle from '../components/TextToggle'
 import { focusUrl } from '../hooks/useFocus'
 import { isHttpUrl, type ProblemFilters } from '../api/problems'
 import { useCreateProblem, useDeleteProblem, useProblems, useUpdateProblem } from '../hooks/useProblems'
-import { DIFFICULTIES, PATTERNS, type Difficulty, type Pattern, type Problem, type ProblemInput, type ProblemStatus } from '../types'
+import { DIFFICULTIES, PATTERNS, type Difficulty, type Pattern, type Problem, type ProblemInput } from '../types'
 
-const STATUSES: { value: ProblemStatus; label: string }[] = [
+const STATUSES = [
   { value: 'due', label: 'Due' },
   { value: 'active', label: 'Active' },
   { value: 'retired', label: 'Retired' },
   { value: 'all', label: 'All' },
-]
+] as const
 
-const stop = (e: MouseEvent) => e.stopPropagation()
+/** "Nov 20" from YYYY-MM-DD (T00:00 parses as local midnight, so the day doesn't shift). */
+const shortDate = (ymd: string) => new Date(`${ymd}T00:00`).toLocaleDateString([], { month: 'short', day: 'numeric' })
 
 export default function LeetCodePage() {
-  const navigate = useNavigate()
   const [filters, setFilters] = useState<ProblemFilters>({ difficulty: '', pattern: '', status: 'active' })
   const problems = useProblems(filters)
   const createProblem = useCreateProblem()
@@ -74,26 +61,25 @@ export default function LeetCodePage() {
     setDeleteOpen(false)
   }
 
+  const select = { select: { native: true }, inputLabel: { shrink: true } } as const
+
   return (
     <>
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          LeetCode
-        </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing({})}>
+      <HeaderActions>
+        <Button size="small" variant="contained" onClick={() => setEditing({})}>
           New problem
         </Button>
-      </Stack>
+      </HeaderActions>
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mb: 2, alignItems: { sm: 'center' } }}>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5, flexWrap: 'wrap', px: 2, py: 1.5, borderBottom: 1, borderColor: 'action.hover' }}>
         <TextField
           select
           size="small"
           label="Difficulty"
           value={filters.difficulty}
           onChange={(e) => setFilters({ ...filters, difficulty: e.target.value as Difficulty | '' })}
-          slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
-          sx={{ minWidth: 140 }}
+          slotProps={select}
+          sx={{ width: 140 }}
         >
           <option value="">All</option>
           {DIFFICULTIES.map((d) => (
@@ -106,102 +92,69 @@ export default function LeetCodePage() {
           label="Pattern"
           value={filters.pattern}
           onChange={(e) => setFilters({ ...filters, pattern: e.target.value as Pattern | '' })}
-          slotProps={{ select: { native: true }, inputLabel: { shrink: true } }}
-          sx={{ minWidth: 180 }}
+          slotProps={select}
+          sx={{ width: 180 }}
         >
           <option value="">All</option>
           {PATTERNS.map((p) => (
             <option key={p}>{p}</option>
           ))}
         </TextField>
-        <ToggleButtonGroup
-          exclusive
-          size="small"
-          aria-label="Status"
-          value={filters.status}
-          onChange={(_, status: ProblemStatus | null) => status && setFilters({ ...filters, status })}
-        >
-          {STATUSES.map((s) => (
-            <ToggleButton key={s.value} value={s.value}>
-              {s.label}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
+        <Box sx={{ ml: { sm: 'auto' } }}>
+          <TextToggle label="Status" value={filters.status} options={STATUSES} onChange={(status) => setFilters({ ...filters, status })} />
+        </Box>
       </Stack>
 
-      {problems.data?.length === 0 ? (
-        <Typography color="text.secondary">No problems match these filters.</Typography>
-      ) : (
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Title</TableCell>
-                <TableCell>Difficulty</TableCell>
-                <TableCell>Pattern</TableCell>
-                <TableCell>Stage</TableCell>
-                <TableCell>Due</TableCell>
-                <TableCell>Reviews</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {problems.data?.map((p) => {
-                const due = !p.retired_at && !!p.due_date && p.due_date <= today
-                const open = () => navigate(focusUrl({ focus: 'leetcode', problem: p.id }))
-                return (
-                  <TableRow
-                    key={p.id}
-                    hover
-                    tabIndex={0}
-                    onClick={open}
-                    onKeyDown={(e) => e.key === 'Enter' && e.target === e.currentTarget && open()}
-                    sx={{ cursor: 'pointer', bgcolor: due ? 'action.hover' : undefined }}
-                  >
-                    <TableCell>
-                      {p.link && isHttpUrl(p.link) ? (
-                        <Link href={p.link} target="_blank" rel="noopener noreferrer" onClick={stop}>
-                          {p.title}
-                        </Link>
-                      ) : (
-                        p.title
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <DifficultyDot difficulty={p.difficulty} />
-                    </TableCell>
-                    <TableCell>{p.pattern}</TableCell>
-                    <TableCell>{p.stage}</TableCell>
-                    <TableCell>
-                      {p.retired_at ? 'Retired' : (p.due_date ?? '—')}
-                      {due && (
-                        <Typography component="span" variant="body2" color={p.due_date! < today ? 'secondary.dark' : 'text.secondary'} sx={{ ml: 1 }}>
-                          {p.due_date! < today ? 'Overdue' : 'Due'}
-                        </Typography>
-                      )}
-                    </TableCell>
-                    <TableCell>{p.review_count}</TableCell>
-                    <TableCell align="right" onClick={stop}>
-                      <IconButton aria-label={`Edit ${p.title}`} onClick={() => setEditing({ problem: p })}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        aria-label={`Delete ${p.title}`}
-                        onClick={() => {
-                          setDeleting(p)
-                          setDeleteOpen(true)
-                        }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
+      {problems.data?.length === 0 && (
+        <Typography color="text.secondary" sx={{ px: 2, py: 1.5 }}>
+          No problems match these filters.
+        </Typography>
       )}
+      <Box component="ul" aria-label="Problems" sx={{ m: 0, p: 0, listStyle: 'none' }}>
+        {problems.data?.map((p) => {
+          const due = p.retired_at ? 'Retired' : !p.due_date ? '' : p.due_date < today ? 'Overdue' : p.due_date === today ? 'Today' : shortDate(p.due_date)
+          return (
+            <Box component="li" key={p.id}>
+              <ListRow>
+                <Box
+                  component={RouterLink}
+                  to={focusUrl({ focus: 'leetcode', problem: p.id })}
+                  sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none' }}
+                >
+                  {p.title}
+                </Box>
+                {p.link && isHttpUrl(p.link) && (
+                  <IconButton size="small" component="a" href={p.link} target="_blank" rel="noopener noreferrer" aria-label={`Open ${p.title} on LeetCode`}>
+                    <OpenInNewIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                )}
+                <Box component="span" sx={{ width: 76, flexShrink: 0, typography: 'body2', color: 'text.secondary' }}>
+                  <DifficultyDot difficulty={p.difficulty} />
+                </Box>
+                <Box component="span" sx={{ width: 140, flexShrink: 0, typography: 'body2', color: 'text.secondary', display: { xs: 'none', sm: 'block' } }}>
+                  {p.pattern}
+                </Box>
+                <Box component="span" sx={{ width: 64, flexShrink: 0, typography: 'body2', color: due === 'Overdue' || due === 'Today' ? 'secondary.dark' : 'text.secondary' }}>
+                  {due}
+                </Box>
+                <IconButton size="small" aria-label={`Edit ${p.title}`} onClick={() => setEditing({ problem: p })}>
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  size="small"
+                  aria-label={`Delete ${p.title}`}
+                  onClick={() => {
+                    setDeleting(p)
+                    setDeleteOpen(true)
+                  }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </ListRow>
+            </Box>
+          )
+        })}
+      </Box>
 
       {editing && (
         <ProblemDialog

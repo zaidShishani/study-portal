@@ -127,17 +127,35 @@ export function createAppTheme(mode: 'light' | 'dark') {
       MuiIconButton: { styleOverrides: { root: { borderRadius: radius } } },
       MuiOutlinedInput: {
         styleOverrides: {
-          root: { borderRadius: radius, '&.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline': { borderColor: t.accent } },
+          root: {
+            borderRadius: radius,
+            '&.Mui-focused:not(.Mui-error) .MuiOutlinedInput-notchedOutline': { borderColor: t.accent },
+            // 13px text × 1.4375 line + 2 × 6.5px = 32px small fields (MUI's 8.5px gives 36).
+            '&.MuiInputBase-sizeSmall .MuiInputBase-input:not(textarea, .MuiAutocomplete-input)': { paddingBlock: 6.5 },
+          },
           notchedOutline: { borderColor: t.border },
         },
       },
+      // Unshrunk small label re-centred for the 32px field.
+      MuiInputLabel: { styleOverrides: { sizeSmall: { '&:not(.MuiInputLabel-shrink)': { transform: 'translate(14px, 7px) scale(1)' } } } },
       // Date/time picker fields use their own input, so they need the same border/focus rules.
       MuiPickersOutlinedInput: {
         styleOverrides: {
           root: { borderRadius: radius, '&.Mui-focused:not(.Mui-error) .MuiPickersOutlinedInput-notchedOutline': { borderColor: t.accent } },
           notchedOutline: { borderColor: t.border },
+          // Fields are small everywhere (default size below): 32px like the other inputs.
+          sectionsContainer: { paddingBlock: 6.5 },
         },
       },
+      // Controls are 28–32px: fields default to the small (32px, 13px text) size, dialogs included.
+      MuiTextField: { defaultProps: { size: 'small' } },
+      MuiPickersTextField: { defaultProps: { size: 'small' } },
+      MuiFormHelperText: { styleOverrides: { root: { fontSize: px(12), marginInline: 0 } } },
+      // Dialogs: radius 8 (shape) + 1px border from MuiPaper; 14/600 title, 24px gutters on the 4px scale.
+      MuiDialogTitle: { styleOverrides: { root: { fontSize: px(14), fontWeight: 600, lineHeight: 1.5, padding: '20px 24px 12px' } } },
+      MuiDialogContent: { styleOverrides: { root: { padding: '4px 24px 8px' } } },
+      MuiDialogContentText: { styleOverrides: { root: { fontSize: px(13), color: t.textMuted } } },
+      MuiDialogActions: { styleOverrides: { root: { padding: '16px 24px 20px', gap: 8, '& > :not(style) ~ :not(style)': { marginLeft: 0 } } } },
       MuiTooltip: { styleOverrides: { tooltip: { backgroundColor: t.text, color: t.surface, borderRadius: radius } } },
       MuiToggleButton: {
         styleOverrides: { root: { borderRadius: radius, '&.Mui-selected': { backgroundColor: t.accentSoft, color: t.text } } },

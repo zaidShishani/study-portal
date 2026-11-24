@@ -100,21 +100,20 @@ test('renders problems with safe external links, due marks and row navigation', 
     problem(3, 'Evil', { link: 'javascript:alert(1)' }),
   ])
   renderPage()
-  const link = await screen.findByRole('link', { name: 'Two Sum' })
-  expect(link.getAttribute('href')).toBe('https://leetcode.com/problems/1')
-  expect(link.getAttribute('target')).toBe('_blank')
-  expect(link.getAttribute('rel')).toBe('noopener noreferrer')
-  expect(within(screen.getByRole('row', { name: /Two Sum/ })).getByText('Overdue')).toBeTruthy()
-  expect(within(screen.getByRole('row', { name: /Climbing Stairs/ })).getByText('Due')).toBeTruthy()
-  expect(within(screen.getByRole('row', { name: /Evil/ })).queryByText(/Due|Overdue/)).toBeNull()
-  // javascript: link is shown as plain text, not an anchor.
-  expect(screen.getByText('Evil')).toBeTruthy()
-  expect(screen.queryByRole('link', { name: 'Evil' })).toBeNull()
+  const external = await screen.findByRole('link', { name: 'Open Two Sum on LeetCode' })
+  expect(external.getAttribute('href')).toBe('https://leetcode.com/problems/1')
+  expect(external.getAttribute('target')).toBe('_blank')
+  expect(external.getAttribute('rel')).toBe('noopener noreferrer')
+  const row = (name: string) => screen.getByRole('link', { name }).closest('li')!
+  expect(within(row('Two Sum')).getByText('Overdue')).toBeTruthy()
+  expect(within(row('Climbing Stairs')).getByText('Today')).toBeTruthy()
+  expect(within(row('Evil')).queryByText(/Today|Overdue/)).toBeNull()
+  expect(within(row('Two Sum')).getByText('Medium')).toBeTruthy()
+  // javascript: link gets no external anchor.
+  expect(screen.queryByRole('link', { name: 'Open Evil on LeetCode' })).toBeNull()
   expect(document.querySelector('a[href^="javascript"]')).toBeNull()
 
-  fireEvent.click(link)
-  expect(screen.queryByRole('heading', { name: /focus=/ })).toBeNull()
-  fireEvent.click(screen.getByText('Evil'))
+  fireEvent.click(screen.getByRole('link', { name: 'Evil' }))
   expect(screen.getByRole('heading', { name: '?focus=leetcode&problem=3' })).toBeTruthy()
 })
 
@@ -180,7 +179,7 @@ test('dialog validates fields and submits a trimmed problem', async () => {
   fireEvent.change(within(dialog).getByLabelText('Minutes'), { target: { value: '1440' } })
   fireEvent.change(within(dialog).getByLabelText('Notes'), { target: { value: '# hash map' } })
   fireEvent.click(save)
-  expect(await screen.findByRole('link', { name: 'Two Sum' })).toBeTruthy()
+  expect(await screen.findByRole('link', { name: 'Open Two Sum on LeetCode' })).toBeTruthy()
   expect(JSON.parse(String(calls(fetchMock, 'POST')[0][1]?.body))).toEqual({
     title: 'Two Sum',
     link: 'https://leetcode.com/problems/two-sum/',

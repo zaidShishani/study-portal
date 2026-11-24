@@ -1,6 +1,10 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Box, Button, Link, Snackbar, Stack, Typography } from '@mui/material'
+import DeleteIcon from '@mui/icons-material/DeleteOutlined'
+import EditIcon from '@mui/icons-material/EditOutlined'
+import { HeaderActions } from '../components/Card'
+import HeaderButton from '../components/HeaderButton'
 import AttemptDialog from '../components/AttemptDialog'
 import ConfirmDialog from '../components/ConfirmDialog'
 import MarkdownView from '../components/MarkdownView'
@@ -16,7 +20,12 @@ import {
 } from '../hooks/useProblems'
 import DifficultyDot from '../components/DifficultyDot'
 import { focusUrl } from '../hooks/useFocus'
+import dayjs from 'dayjs'
+import { fonts } from '../theme/tokens'
 import { RESULT_LABELS, type ProblemInput } from '../types'
+
+const date = (ymd: string | null) =>
+  ymd ? <Box component="span" sx={{ fontFamily: fonts.mono, fontSize: 12 }}>{dayjs(ymd).format('MMM D, YYYY')}</Box> : '—'
 
 export default function ProblemPage({ problemId }: { problemId: number }) {
   const navigate = useNavigate()
@@ -36,14 +45,14 @@ export default function ProblemPage({ problemId }: { problemId: number }) {
 
   if (query.error instanceof ApiError && query.error.status === 404) {
     return (
-      <>
-        <Typography variant="h4" component="h1" gutterBottom>
+      <Box sx={{ p: 3 }}>
+        <Typography variant="subtitle1" component="h3" gutterBottom>
           Problem not found
         </Typography>
         <Link component={RouterLink} to={focusUrl({ focus: 'leetcode' })}>
           Back to LeetCode
         </Link>
-      </>
+      </Box>
     )
   }
 
@@ -67,63 +76,59 @@ export default function ProblemPage({ problemId }: { problemId: number }) {
   const details: [string, ReactNode][] = [
     ['Pattern', p.pattern],
     ['Stage', p.stage],
-    ['Next due', p.retired_at ? 'Retired' : (p.due_date ?? '—')],
+    ['Next due', p.retired_at ? 'Retired' : date(p.due_date)],
     ['Reviews', p.review_count],
     ['Last result', p.last_result ? RESULT_LABELS[p.last_result] : '—'],
-    ['Solved', p.solved_date ?? '—'],
+    ['Solved', date(p.solved_date)],
     ['Minutes', p.minutes ?? '—'],
   ]
 
   return (
-    <>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={2}
-        sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between', mb: 3 }}
-      >
-        <Stack direction="row" spacing={2} sx={{ alignItems: 'center', minWidth: 0 }}>
-          <Typography variant="h4" component="h1" sx={{ overflowWrap: 'anywhere' }}>
-            {p.link && isHttpUrl(p.link) ? (
-              <Link href={p.link} target="_blank" rel="noopener noreferrer">
-                {p.title}
-              </Link>
-            ) : (
-              p.title
-            )}
-          </Typography>
-          <DifficultyDot difficulty={p.difficulty} />
-        </Stack>
-        <Stack direction="row" spacing={1}>
-          {p.retired_at ? (
-            <Button
-              variant="contained"
-              disabled={unretireProblem.isPending}
-              onClick={() => {
-                if (unretiring.current) return
-                unretiring.current = true
-                unretireProblem.mutate(p.id, {
-                  onError,
-                  onSettled: () => {
-                    unretiring.current = false
-                  },
-                })
-              }}
-            >
-              Un-retire
-            </Button>
-          ) : (
-            <Button variant="contained" onClick={() => setAttempting(true)}>
-              Log attempt
-            </Button>
-          )}
-          <Button onClick={() => setEditing(true)}>Edit</Button>
-          <Button color="error" onClick={() => setDeleteOpen(true)}>
-            Delete
+    <Box sx={{ p: 3 }}>
+      <HeaderActions>
+        <HeaderButton label="Edit" icon={<EditIcon fontSize="small" />} onClick={() => setEditing(true)} />
+        <HeaderButton label="Delete" color="error" icon={<DeleteIcon fontSize="small" />} onClick={() => setDeleteOpen(true)} />
+        {p.retired_at ? (
+          <Button
+            size="small"
+            variant="contained"
+            disabled={unretireProblem.isPending}
+            onClick={() => {
+              if (unretiring.current) return
+              unretiring.current = true
+              unretireProblem.mutate(p.id, {
+                onError,
+                onSettled: () => {
+                  unretiring.current = false
+                },
+              })
+            }}
+          >
+            Un-retire
           </Button>
-        </Stack>
+        ) : (
+          <Button size="small" variant="contained" onClick={() => setAttempting(true)}>
+            Log attempt
+          </Button>
+        )}
+      </HeaderActions>
+
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5, mb: 2, minWidth: 0 }}>
+        <Typography variant="subtitle1" component="h3" sx={{ overflowWrap: 'anywhere' }}>
+          {p.link && isHttpUrl(p.link) ? (
+            <Link href={p.link} target="_blank" rel="noopener noreferrer">
+              {p.title}
+            </Link>
+          ) : (
+            p.title
+          )}
+        </Typography>
+        <Typography component="span" variant="body2" color="text.secondary">
+          <DifficultyDot difficulty={p.difficulty} />
+        </Typography>
       </Stack>
 
-      <Box component="dl" sx={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', columnGap: 3, rowGap: 1, m: 0, mb: 3 }}>
+      <Box component="dl" sx={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', columnGap: 3, rowGap: 0.5, m: 0, mb: 3 }}>
         {details.map(([label, value]) => (
           <Box key={label} sx={{ display: 'contents' }}>
             <Typography component="dt" color="text.secondary">
@@ -138,7 +143,7 @@ export default function ProblemPage({ problemId }: { problemId: number }) {
 
       {p.key_insight && (
         <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" component="h2">
+          <Typography variant="overline" component="h4" color="text.secondary">
             Key insight
           </Typography>
           <MarkdownView>{p.key_insight}</MarkdownView>
@@ -146,7 +151,7 @@ export default function ProblemPage({ problemId }: { problemId: number }) {
       )}
       {p.notes && (
         <Box>
-          <Typography variant="h6" component="h2">
+          <Typography variant="overline" component="h4" color="text.secondary">
             Notes
           </Typography>
           <MarkdownView>{p.notes}</MarkdownView>
@@ -167,6 +172,6 @@ export default function ProblemPage({ problemId }: { problemId: number }) {
         onClose={() => setDeleteOpen(false)}
       />
       <Snackbar open={!!message} message={message} autoHideDuration={6000} onClose={() => setMessage('')} />
-    </>
+    </Box>
   )
 }

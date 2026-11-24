@@ -78,7 +78,7 @@ test('home calendar card: dot and agenda for today, day selection, expand opens 
 
   await item.click()
   await expect(page).toHaveURL(new URL('/?focus=calendar', baseURL).href)
-  await expect(page.getByRole('heading', { level: 1, name: 'Calendar' })).toBeVisible()
+  await expect(page.getByRole('list', { name: 'Legend' })).toBeVisible()
   await expect(page.locator('.fc')).toBeVisible()
   await page.getByRole('button', { name: 'Collapse Calendar' }).click()
 

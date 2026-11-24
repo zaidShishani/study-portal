@@ -1,23 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  Box,
-  Button,
-  Card,
-  CardActionArea,
-  CardActions,
-  CardContent,
-  IconButton,
-  Snackbar,
-  Stack,
-  Typography,
-} from '@mui/material'
-import AddIcon from '@mui/icons-material/Add'
-import DeleteIcon from '@mui/icons-material/Delete'
-import EditIcon from '@mui/icons-material/Edit'
+import { Box, Button, IconButton, Snackbar, Typography } from '@mui/material'
+import DeleteIcon from '@mui/icons-material/DeleteOutlined'
+import EditIcon from '@mui/icons-material/EditOutlined'
+import { HeaderActions } from '../components/Card'
+import ListRow from '../components/ListRow'
+import RoadmapProgress from '../components/RoadmapProgress'
 import ConfirmDialog from '../components/ConfirmDialog'
 import DeckDialog from '../components/DeckDialog'
-import RoadmapProgress from '../components/RoadmapProgress'
 import { useCreateRoadmap, useDeleteRoadmap, useRenameRoadmap, useRoadmaps } from '../hooks/useRoadmaps'
 import { focusUrl } from '../hooks/useFocus'
 import type { Roadmap } from '../types'
@@ -56,47 +46,43 @@ export default function RoadmapsPage() {
 
   return (
     <>
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Roadmaps
-        </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing({})}>
+      <HeaderActions>
+        <Button size="small" variant="contained" onClick={() => setEditing({})}>
           New roadmap
         </Button>
-      </Stack>
+      </HeaderActions>
 
       {roadmaps.data?.length === 0 && (
-        <Typography color="text.secondary">No roadmaps yet. Create one to get started.</Typography>
+        <Typography color="text.secondary" sx={{ px: 2, py: 1.5 }}>
+          No roadmaps yet.
+        </Typography>
       )}
 
-      <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
-        {roadmaps.data?.map((roadmap) => (
-          <Card key={roadmap.id} variant="outlined">
-            <CardActionArea component={Link} to={focusUrl({ focus: 'roadmaps', roadmap: roadmap.id })}>
-              <CardContent>
-                <Typography variant="h6" component="h2" noWrap title={roadmap.title} gutterBottom>
-                  {roadmap.title}
-                </Typography>
-                <RoadmapProgress done={roadmap.done_count} total={roadmap.total_count} />
-              </CardContent>
-            </CardActionArea>
-            <CardActions sx={{ justifyContent: 'flex-end' }}>
-              <IconButton aria-label={`Rename ${roadmap.title}`} onClick={() => setEditing({ roadmap })}>
-                <EditIcon />
-              </IconButton>
-              <IconButton
-                aria-label={`Delete ${roadmap.title}`}
-                onClick={() => {
-                  setDeleting(roadmap)
-                  setDeleteOpen(true)
-                }}
-              >
-                <DeleteIcon />
-              </IconButton>
-            </CardActions>
-          </Card>
-        ))}
-      </Box>
+      {roadmaps.data?.map((roadmap) => (
+        <ListRow key={roadmap.id}>
+          <Box
+            component={Link}
+            to={focusUrl({ focus: 'roadmaps', roadmap: roadmap.id })}
+            sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: 'none' }}
+          >
+            {roadmap.title}
+          </Box>
+          <RoadmapProgress title={roadmap.title} done={roadmap.done_count} total={roadmap.total_count} />
+          <IconButton size="small" aria-label={`Rename ${roadmap.title}`} onClick={() => setEditing({ roadmap })}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            aria-label={`Delete ${roadmap.title}`}
+            onClick={() => {
+              setDeleting(roadmap)
+              setDeleteOpen(true)
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </ListRow>
+      ))}
 
       {editing && (
         <DeckDialog

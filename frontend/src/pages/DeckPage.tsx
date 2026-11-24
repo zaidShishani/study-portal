@@ -1,60 +1,76 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  Box,
-  Button,
-  IconButton,
-  Paper,
-  Snackbar,
-  Stack,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
-} from '@mui/material'
-import AddIcon from '@mui/icons-material/Add'
-import DeleteIcon from '@mui/icons-material/Delete'
-import EditIcon from '@mui/icons-material/Edit'
+import { Box, Button, IconButton, Snackbar, Stack, Typography } from '@mui/material'
+import DeleteIcon from '@mui/icons-material/DeleteOutlined'
+import EditIcon from '@mui/icons-material/EditOutlined'
+import dayjs from 'dayjs'
 import { ApiError } from '../api/client'
 import CardDialog from '../components/CardDialog'
 import ConfirmDialog from '../components/ConfirmDialog'
-import MarkdownView from '../components/MarkdownView'
-import { useCards, useCreateCard, useDeleteCard, useUnretireCard, useUpdateCard } from '../hooks/useCards'
+import ListRow from '../components/ListRow'
+import TextToggle from '../components/TextToggle'
+import { useCards, useDeleteCard, useUnretireCard, useUpdateCard } from '../hooks/useCards'
 import { useDeck } from '../hooks/useDecks'
 import { focusUrl } from '../hooks/useFocus'
+import { fonts } from '../theme/tokens'
 import type { Card, CardStatus } from '../types'
 
-// Crude markdown strip for button labels, so screen readers can tell cards apart.
-const excerpt = (md: string) => md.replace(/[#*_`>~[\]()!|-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 40)
+// Crude markdown strip for one-line previews and button labels, so screen readers can tell cards apart.
+const plain = (md: string) => md.replace(/[#*_`>~[\]()!|-]/g, '').replace(/\s+/g, ' ').trim()
+const excerpt = (md: string) => plain(md).slice(0, 40)
+const line = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const
+const STATUSES = [
+  { value: 'active', label: 'Active' },
+  { value: 'retired', label: 'Retired' },
+  { value: 'all', label: 'All' },
+] as const
 
-export default function DeckPage({ deckId }: { deckId: number }) {
+/** "Due today", "In 3 days", "Overdue", "Retired"; today/overdue are amber. */
+function due(card: Card, today: string): [string, boolean] {
+  if (card.retired_at) return ['Retired', false]
+  if (!card.due_date) return ['', false]
+  if (card.due_date < today) return ['Overdue', true]
+  if (card.due_date === today) return ['Due today', true]
+  const days = dayjs(card.due_date).diff(today, 'day')
+  return [`In ${days} ${days === 1 ? 'day' : 'days'}`, false]
+}
+
+type Props = {
+  deckId: number
+  /** Deck-level buttons (rename, delete) next to the title. */
+  actions?: ReactNode
+}
+
+/** The selected deck's cards: title row with the status toggle, then two-line rows (front / back, due on the right). */
+export default function DeckPage({ deckId, actions }: Props) {
   const [status, setStatus] = useState<CardStatus>('active')
   const deck = useDeck(deckId)
   const cards = useCards(deckId, status)
-  const createCard = useCreateCard()
   const updateCard = useUpdateCard()
   const deleteCard = useDeleteCard()
   const unretireCard = useUnretireCard()
   // isPending lands a render late; the ref blocks a same-tick double click.
   const unretiring = useRef(false)
-  // null = closed; { card: undefined } = create; { card } = edit.
-  const [editing, setEditing] = useState<{ card?: Card } | null>(null)
+  const [editing, setEditing] = useState<Card | null>(null)
   const [deleting, setDeleting] = useState<Card | null>(null)
   const [message, setMessage] = useState('')
   const [dismissedError, setDismissedError] = useState<Error | null>(null)
   const onError = (err: Error) => setMessage(err.message)
   const loadError = deck.error ?? cards.error
   const snackbar = message || (loadError && loadError !== dismissedError ? loadError.message : '')
+  // YYYY-MM-DD strings compare correctly as text; the browser zone is synced to the user's by useMe.
+  const today = dayjs().format('YYYY-MM-DD')
 
   if (deck.error instanceof ApiError && deck.error.status === 404) {
     return (
-      <>
-        <Typography variant="h4" component="h1" gutterBottom>
+      <Box sx={{ p: 2 }}>
+        <Typography variant="subtitle2" component="h3" gutterBottom>
           Deck not found
         </Typography>
-        <Button component={Link} to={focusUrl({ focus: 'flashcards' })}>
+        <Button size="small" component={Link} to={focusUrl({ focus: 'flashcards' })}>
           Back to flashcards
         </Button>
-      </>
+      </Box>
     )
   }
 
@@ -64,10 +80,7 @@ export default function DeckPage({ deckId }: { deckId: number }) {
   }
 
   function save(values: { front: string; back: string }) {
-    const req = editing?.card
-      ? updateCard.mutateAsync({ id: editing.card.id, ...values })
-      : createCard.mutateAsync({ deckId, ...values })
-    return req.then(() => setEditing(null), onError)
+    return updateCard.mutateAsync({ id: editing!.id, ...values }).then(() => setEditing(null), onError)
   }
 
   function confirmDelete() {
@@ -75,87 +88,81 @@ export default function DeckPage({ deckId }: { deckId: number }) {
     setDeleting(null)
   }
 
-  const due = deck.data?.due_count ?? 0
+  const count = deck.data?.card_count
 
   return (
     <>
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 3, gap: 2, flexWrap: 'wrap' }}>
-        <Typography variant="h4" component="h1" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+      {/* Wraps on phones: the toggle drops to its own line and the title keeps room to show. */}
+      <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1, minHeight: 44, px: 2, py: 0.5, borderBottom: 1, borderColor: 'action.hover' }}>
+        <Typography variant="subtitle2" component="h3" sx={{ ...line, minWidth: 96 }}>
           {deck.data?.title}
         </Typography>
-        <Stack direction="row" spacing={1}>
-          <Button variant="outlined" component={Link} to={focusUrl({ focus: 'flashcards', review: deckId })} disabled={due === 0}>
-            Start review ({due} due)
-          </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setEditing({})}>
-            New card
-          </Button>
-        </Stack>
+        {count !== undefined && (
+          <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0, fontFamily: fonts.mono }}>
+            {count} {count === 1 ? 'card' : 'cards'}
+          </Typography>
+        )}
+        {actions}
+        <Box sx={{ ml: 'auto' }}>
+          <TextToggle label="Card filter" value={status} options={STATUSES} onChange={setStatus} />
+        </Box>
       </Stack>
 
-      <ToggleButtonGroup
-        exclusive
-        size="small"
-        value={status}
-        onChange={(_, v: CardStatus | null) => v && setStatus(v)}
-        aria-label="Card filter"
-        sx={{ mb: 2 }}
-      >
-        <ToggleButton value="active">Active</ToggleButton>
-        <ToggleButton value="retired">Retired</ToggleButton>
-        <ToggleButton value="all">All</ToggleButton>
-      </ToggleButtonGroup>
+      {cards.data?.length === 0 && (
+        <Typography color="text.secondary" sx={{ px: 2, py: 1.5 }}>
+          No cards here.
+        </Typography>
+      )}
 
-      {cards.data?.length === 0 && <Typography color="text.secondary">No cards here.</Typography>}
-
-      <Stack spacing={1.5}>
-        {cards.data?.map((card) => (
-          <Paper key={card.id} variant="outlined" sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              {/* Clamp long fronts to a short preview. */}
-              <Box sx={{ maxHeight: '6em', overflow: 'hidden', '& > div > :first-of-type': { mt: 0 }, '& > div > :last-child': { mb: 0 } }}>
-                <MarkdownView>{card.front}</MarkdownView>
+      {/* Row buttons show on hover / keyboard focus where hovering exists; always on touch. */}
+      <Box sx={{ '@media (hover: hover)': { '& .row-actions': { opacity: 0 }, '& > :hover .row-actions, & .row-actions:focus-within': { opacity: 1 } } }}>
+        {cards.data?.map((card) => {
+          const [label, soon] = due(card, today)
+          return (
+            <ListRow key={card.id}>
+              <Box sx={{ flex: 1, minWidth: 0, py: 1 }}>
+                <Box sx={line}>{plain(card.front)}</Box>
+                <Typography variant="body2" color="text.secondary" sx={line}>
+                  {plain(card.back)}
+                </Typography>
               </Box>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Stage {card.stage} · {card.retired_at ? 'Retired' : `Due ${card.due_date}`}
+              <Typography variant="body2" sx={{ width: 96, flexShrink: 0, textAlign: 'right', color: soon ? 'secondary.dark' : 'text.secondary' }}>
+                {label}
               </Typography>
-            </Box>
-            {card.retired_at && (
-              <Button
-                size="small"
-                aria-label={`Un-retire card: ${excerpt(card.front)}`}
-                onClick={() => {
-                  if (unretiring.current) return
-                  unretiring.current = true
-                  unretireCard.mutate(card.id, {
-                    onError,
-                    onSettled: () => {
-                      unretiring.current = false
-                    },
-                  })
-                }}
-                disabled={unretireCard.isPending}
-              >
-                Un-retire
-              </Button>
-            )}
-            <IconButton aria-label={`Edit card: ${excerpt(card.front)}`} onClick={() => setEditing({ card })}>
-              <EditIcon />
-            </IconButton>
-            <IconButton aria-label={`Delete card: ${excerpt(card.front)}`} onClick={() => setDeleting(card)}>
-              <DeleteIcon />
-            </IconButton>
-          </Paper>
-        ))}
-      </Stack>
+              <Stack direction="row" className="row-actions" sx={{ alignItems: 'center', flexShrink: 0 }}>
+                {card.retired_at && (
+                  <Button
+                    size="small"
+                    aria-label={`Un-retire card: ${excerpt(card.front)}`}
+                    onClick={() => {
+                      if (unretiring.current) return
+                      unretiring.current = true
+                      unretireCard.mutate(card.id, {
+                        onError,
+                        onSettled: () => {
+                          unretiring.current = false
+                        },
+                      })
+                    }}
+                    disabled={unretireCard.isPending}
+                  >
+                    Un-retire
+                  </Button>
+                )}
+                <IconButton size="small" aria-label={`Edit card: ${excerpt(card.front)}`} onClick={() => setEditing(card)}>
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <IconButton size="small" aria-label={`Delete card: ${excerpt(card.front)}`} onClick={() => setDeleting(card)}>
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            </ListRow>
+          )
+        })}
+      </Box>
 
       {editing && (
-        <CardDialog
-          initial={editing.card}
-          pending={createCard.isPending || updateCard.isPending}
-          onSubmit={save}
-          onClose={() => setEditing(null)}
-        />
+        <CardDialog initial={editing} pending={updateCard.isPending} onSubmit={save} onClose={() => setEditing(null)} />
       )}
       <ConfirmDialog
         open={!!deleting}

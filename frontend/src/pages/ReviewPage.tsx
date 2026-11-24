@@ -1,26 +1,42 @@
-import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Button, Divider, Paper, Snackbar, Stack, Typography } from '@mui/material'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Box, Button, LinearProgress, Paper, Snackbar, Stack, Typography } from '@mui/material'
 import { ApiError } from '../api/client'
 import MarkdownView from '../components/MarkdownView'
 import { useReviewCard, useReviewQueue } from '../hooks/useCards'
-import { focusUrl } from '../hooks/useFocus'
+import { fonts } from '../theme/tokens'
 
-/** deckId undefined = review every deck. */
-export default function ReviewPage({ deckId }: { deckId?: number }) {
-  const backTo = focusUrl(deckId === undefined ? { focus: 'flashcards' } : { focus: 'flashcards', deck: deckId })
+const Kbd = ({ children }: { children: ReactNode }) => (
+  <Box
+    component="kbd"
+    sx={{ ml: 1, px: 0.625, border: 1, borderBottomWidth: 2, borderColor: 'divider', borderRadius: '4px', fontSize: 11, lineHeight: '16px', color: 'text.secondary', bgcolor: 'background.default' }}
+  >
+    {children}
+  </Box>
+)
+
+type Props = {
+  /** undefined = review every deck. */
+  deckId?: number
+  /** Shown in the panel label: "Review · <title>". */
+  title: string
+}
+
+/** Inline review panel: Space flips, 1 = Wrong, 2 = Right. */
+export default function ReviewPage({ deckId, title }: Props) {
   const queue = useReviewQueue(deckId)
   const review = useReviewCard()
-  const [index, setIndex] = useState(0)
+  // Answered (or skipped) card ids; the queue can refetch after card edits, so position comes from this, not an index.
+  const [answered, setAnswered] = useState<number[]>([])
   const [flipped, setFlipped] = useState(false)
   const [message, setMessage] = useState('')
   // Mutation state updates asynchronously; this ref blocks a second answer from a fast double key press.
   const busy = useRef(false)
-  const cards = queue.data ?? []
-  const card = cards[index]
+  const remaining = (queue.data ?? []).filter((c) => !answered.includes(c.id))
+  const card = remaining[0]
+  const total = answered.length + remaining.length
 
-  function next() {
-    setIndex((i) => i + 1)
+  function next(id: number) {
+    setAnswered((a) => [...a, id])
     setFlipped(false)
   }
 
@@ -30,11 +46,11 @@ export default function ReviewPage({ deckId }: { deckId?: number }) {
     review.mutate(
       { id: card.id, correct },
       {
-        onSuccess: next,
+        onSuccess: () => next(card.id),
         onError: (err) => {
           setMessage(err.message)
           // 409 = already reviewed elsewhere; move on rather than get stuck on it.
-          if (err instanceof ApiError && err.status === 409) next()
+          if (err instanceof ApiError && err.status === 409) next(card.id)
         },
         onSettled: () => {
           busy.current = false
@@ -47,10 +63,12 @@ export default function ReviewPage({ deckId }: { deckId?: number }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement
-      // Leave focused controls alone, e.g. Space must activate a focused button.
-      const native = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A']
-      if (e.ctrlKey || e.metaKey || e.altKey || t.isContentEditable || native.includes(t.tagName)) return
+      // An open dialog/menu (e.g. New card) owns the keyboard even though focus sits on its container.
+      if (document.querySelector('[role="dialog"], [role="menu"], [role="listbox"]')) return
+      if (e.ctrlKey || e.metaKey || e.altKey || t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName)) return
       if (e.key === ' ') {
+        // Space must still activate a focused button or link; 1 / 2 work there (e.g. right after picking a deck).
+        if (!card || ['BUTTON', 'A'].includes(t.tagName)) return
         e.preventDefault()
         setFlipped(true)
       } else if (e.key === '1') answer(false)
@@ -60,75 +78,71 @@ export default function ReviewPage({ deckId }: { deckId?: number }) {
     return () => window.removeEventListener('keydown', onKey)
   })
 
-  const back = (
-    <Button component={Link} to={backTo}>
-      Back to {deckId === undefined ? 'flashcards' : 'deck'}
-    </Button>
-  )
-
-  if (queue.error)
-    return (
-      <>
-        <Typography color="error" gutterBottom>
-          {queue.error.message}
-        </Typography>
-        {back}
-      </>
+  let body: ReactNode
+  if (queue.error) body = <Typography color="error">{queue.error.message}</Typography>
+  else if (!queue.data) body = null
+  else if (!card)
+    body = (
+      <Typography variant="subtitle2" component="h3" color="text.secondary">
+        {answered.length ? `Done! Reviewed ${answered.length} ${answered.length === 1 ? 'card' : 'cards'}.` : 'Nothing due'}
+      </Typography>
     )
-  if (!queue.data) return null
-  if (cards.length === 0)
-    return (
+  else
+    body = (
       <>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Nothing due
-        </Typography>
-        {back}
-      </>
-    )
-  if (!card)
-    return (
-      <>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Done! Reviewed {cards.length} {cards.length === 1 ? 'card' : 'cards'}.
-        </Typography>
-        {back}
+        <LinearProgress variant="determinate" value={(answered.length / total) * 100} aria-label="Review progress" sx={{ height: 3 }} />
+        <Paper
+          sx={{ flex: 1, minHeight: 200, overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1.5, p: 3, textAlign: 'center' }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            Front
+          </Typography>
+          <Box sx={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.01em', '& p': { m: 0 } }}>
+            <MarkdownView>{card.front}</MarkdownView>
+          </Box>
+          {flipped && (
+            <>
+              <Box sx={{ width: 40, height: '1px', bgcolor: 'divider', my: 0.5 }} />
+              <Typography variant="body2" color="text.secondary">
+                Back
+              </Typography>
+              <Box sx={{ fontSize: 15, '& p': { m: 0 } }}>
+                <MarkdownView>{card.back}</MarkdownView>
+              </Box>
+            </>
+          )}
+        </Paper>
+        {flipped ? (
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+            <Button variant="outlined" sx={{ height: 40 }} disabled={review.isPending} onClick={() => answer(false)}>
+              Wrong <Kbd>1</Kbd>
+            </Button>
+            <Button variant="contained" sx={{ height: 40, '& kbd': { color: 'inherit', bgcolor: 'transparent', opacity: 0.8 } }} disabled={review.isPending} onClick={() => answer(true)}>
+              Right <Kbd>2</Kbd>
+            </Button>
+          </Box>
+        ) : (
+          <Button variant="outlined" sx={{ height: 40 }} onClick={() => setFlipped(true)}>
+            Show answer <Kbd>Space</Kbd>
+          </Button>
+        )}
       </>
     )
 
   return (
-    <>
-      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-        <Typography variant="h4" component="h1">
-          Review
+    <Stack sx={{ height: '100%', gap: 2 }}>
+      <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+        <Typography variant="overline" component="h3" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
+          Review · {title}
         </Typography>
-        <Typography color="text.secondary">
-          {index + 1} of {cards.length}
-        </Typography>
-      </Stack>
-      <Paper variant="outlined" sx={{ p: 3, mb: 2 }}>
-        <MarkdownView>{card.front}</MarkdownView>
-        {flipped && (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <MarkdownView>{card.back}</MarkdownView>
-          </>
+        {card && (
+          <Typography variant="body2" sx={{ ml: 'auto', flexShrink: 0, fontFamily: fonts.mono, color: 'text.secondary' }}>
+            {answered.length + 1} of {total}
+          </Typography>
         )}
-      </Paper>
-      {flipped ? (
-        <Stack direction="row" spacing={1}>
-          <Button variant="outlined" color="error" disabled={review.isPending} onClick={() => answer(false)}>
-            Wrong (1)
-          </Button>
-          <Button variant="contained" color="success" disabled={review.isPending} onClick={() => answer(true)}>
-            Right (2)
-          </Button>
-        </Stack>
-      ) : (
-        <Button variant="contained" onClick={() => setFlipped(true)}>
-          Show answer (Space)
-        </Button>
-      )}
+      </Stack>
+      {body}
       <Snackbar open={!!message} message={message} autoHideDuration={6000} onClose={() => setMessage('')} />
-    </>
+    </Stack>
   )
 }

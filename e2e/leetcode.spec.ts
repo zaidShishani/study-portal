@@ -16,7 +16,7 @@ test('create a problem, log failed then solved, and the ladder advances', async 
   await page.goto('/')
   await page.getByRole('button', { name: 'Expand LeetCode' }).click()
   // Home's header has its own New problem; wait for the expanded view so the click hits the page's button.
-  await expect(page.getByRole('heading', { level: 1, name: 'LeetCode' })).toBeVisible()
+  await expect(page.getByLabel('Difficulty')).toBeVisible()
   await page.getByRole('button', { name: 'New problem' }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Title').fill(title)
@@ -25,15 +25,15 @@ test('create a problem, log failed then solved, and the ladder advances', async 
   await dialog.getByRole('button', { name: 'Save' }).click()
   await expect(dialog).toBeHidden()
 
-  await page.getByRole('row', { name: new RegExp(title) }).click()
-  await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible()
+  await page.getByRole('link', { name: title, exact: true }).click()
+  await expect(page.getByRole('heading', { level: 3, name: title, exact: true })).toBeVisible()
   await expect(detail(page, 'Stage')).toHaveText('0')
 
   // The browser's timezone is synced to the user, so its "tomorrow" is the server's.
   const tomorrow = await page.evaluate(() => {
     const d = new Date()
     d.setDate(d.getDate() + 1)
-    return d.toLocaleDateString('en-CA')
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) // "Nov 24, 2026", as shown
   })
   await logAttempt(page, 'Failed')
   await expect(detail(page, 'Stage')).toHaveText('1')

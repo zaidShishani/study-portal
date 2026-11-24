@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Box, Button, Paper, Snackbar, Stack, TextField, Typography } from '@mui/material'
+import { Box, Button, Snackbar, Stack, TextField, Typography } from '@mui/material'
+import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolderOutlined'
+import { HeaderActions } from '../components/Card'
+import HeaderButton from '../components/HeaderButton'
+import { WIDE_QUERY } from '../hooks/useExpandFlip'
 import { buildTree, type TreeLevel } from '../api/notes'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ErrorBoundary from '../components/ErrorBoundary'
@@ -145,14 +149,23 @@ export default function NotesPage({ initialPageId, onDirtyChange }: Props) {
 
   return (
     <>
-      <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
-        Notes
-      </Typography>
-      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: '300px 1fr' }, alignItems: 'start' }}>
-        <Paper variant="outlined" sx={{ p: 1 }}>
+      <HeaderActions>
+        <HeaderButton label="New folder" icon={<CreateNewFolderIcon fontSize="small" />} onClick={() => setDialog('folder')} />
+        <Button size="small" variant="contained" onClick={() => canLeavePage() && setDialog('page')}>
+          New page
+        </Button>
+      </HeaderActions>
+      <Box
+        sx={{
+          height: '100%',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          [`@media ${WIDE_QUERY}`]: { gridTemplateColumns: '280px minmax(0, 1fr)' },
+          '& > *': { minHeight: 0, overflow: 'auto' },
+        }}
+      >
+        <Box sx={{ borderRight: 1, borderColor: 'divider', p: 1 }}>
           <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
-            <Button size="small" onClick={() => setDialog('folder')}>New folder</Button>
-            <Button size="small" onClick={() => canLeavePage() && setDialog('page')}>New page</Button>
             {/* Pages are renamed via the title field in the editor. */}
             <Button size="small" disabled={!selectedFolder} onClick={() => setDialog('rename')}>Rename</Button>
             <Button size="small" disabled={!selectedName} onClick={() => setDialog('move')}>Move</Button>
@@ -166,9 +179,9 @@ export default function NotesPage({ initialPageId, onDirtyChange }: Props) {
           <ErrorBoundary message="Couldn't show the notes tree. Reload the page.">
             <FolderTree tree={tree} selected={selected} onSelect={select} expanded={expanded} onExpandedChange={setExpanded} />
           </ErrorBoundary>
-        </Paper>
+        </Box>
 
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0, p: 3 }}>
           {openPageId === null ? (
             <Typography color="text.secondary">Select or create a page.</Typography>
           ) : page.data?.id === openPageId ? (
@@ -248,10 +261,9 @@ function PageEditor({ page, onDirtyChange, onError }: EditorProps) {
   return (
     <Stack spacing={2}>
       <Stack direction="row" spacing={2} sx={{ alignItems: 'flex-start' }}>
-        <TextField label="Title" value={title} onChange={(e) => setTitle(e.target.value)} fullWidth
+        <TextField size="small" label="Title" value={title} onChange={(e) => setTitle(e.target.value)} fullWidth
           error={!!titleError} helperText={titleError} />
-        <Button variant="contained" onClick={save} disabled={!dirty || updatePage.isPending || !!titleError || !!contentError}
-          sx={{ mt: 1 }}>
+        <Button variant="contained" onClick={save} disabled={!dirty || updatePage.isPending || !!titleError || !!contentError}>
           Save
         </Button>
       </Stack>
